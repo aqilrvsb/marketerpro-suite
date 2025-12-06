@@ -273,7 +273,7 @@ const Prospects: React.FC = () => {
       const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
       const namaIdx = header.findIndex(h => h.includes('nama'));
       const phoneIdx = header.findIndex(h => h.includes('telefon') || h.includes('phone'));
-      const skuIdx = header.findIndex(h => h.includes('sku'));
+      const nicheIdx = header.findIndex(h => h.includes('niche') || h.includes('product'));
       const jenisIdx = header.findIndex(h => h.includes('jenis'));
       const tarikhIdx = header.findIndex(h => h.includes('tarikh'));
       const adminIdx = header.findIndex(h => h.includes('admin'));
@@ -283,17 +283,17 @@ const Prospects: React.FC = () => {
 
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-        
+
         const nama = namaIdx >= 0 ? values[namaIdx]?.toUpperCase() : '';
         const phone = phoneIdx >= 0 ? values[phoneIdx] : '';
-        const sku = skuIdx >= 0 ? values[skuIdx]?.toUpperCase() : '';
+        const nicheValue = nicheIdx >= 0 ? values[nicheIdx]?.toUpperCase() : '';
         const jenis = jenisIdx >= 0 ? values[jenisIdx]?.toUpperCase() : '';
         const tarikh = tarikhIdx >= 0 ? values[tarikhIdx] : '';
         const admin = adminIdx >= 0 ? values[adminIdx]?.toUpperCase() : '';
 
-        // Find product by SKU to get product name for niche
-        const product = products.find(p => p.sku.toUpperCase() === sku);
-        const niche = product ? product.name : '';
+        // Match niche by product name (case-insensitive)
+        const product = products.find(p => p.name.toUpperCase() === nicheValue);
+        const niche = product ? product.name : nicheValue; // Use product name if found, otherwise use raw value
 
         // Validate required fields and phone format
         if (!nama || !phone || !niche || !jenis || !tarikh) {
@@ -319,6 +319,7 @@ const Prospects: React.FC = () => {
             jenisProspek: jenis,
             tarikhPhoneNumber: tarikh,
             adminIdStaff: admin,
+            marketerIdStaff: '', // Will be auto-filled in DataContext for marketers
             statusClosed: '',
             priceClosed: 0,
           });
@@ -717,7 +718,7 @@ const Prospects: React.FC = () => {
                   <tr className="border-b border-border">
                     <th className="text-left py-2 px-2 font-semibold">Nama</th>
                     <th className="text-left py-2 px-2 font-semibold">Telefon</th>
-                    <th className="text-left py-2 px-2 font-semibold">SKU</th>
+                    <th className="text-left py-2 px-2 font-semibold">Niche</th>
                     <th className="text-left py-2 px-2 font-semibold">Jenis</th>
                     <th className="text-left py-2 px-2 font-semibold">Tarikh</th>
                     <th className="text-left py-2 px-2 font-semibold">Admin</th>
@@ -727,7 +728,7 @@ const Prospects: React.FC = () => {
                   <tr className="text-muted-foreground">
                     <td className="py-2 px-2">ALI BIN ABU</td>
                     <td className="py-2 px-2">60123456789</td>
-                    <td className="py-2 px-2">PROD001</td>
+                    <td className="py-2 px-2">PRODUCT NAME</td>
                     <td className="py-2 px-2">NP</td>
                     <td className="py-2 px-2">2024-01-15</td>
                     <td className="py-2 px-2">AD-001</td>
@@ -735,8 +736,8 @@ const Prospects: React.FC = () => {
                   <tr className="text-muted-foreground">
                     <td className="py-2 px-2">SITI AMINAH</td>
                     <td className="py-2 px-2">60198765432</td>
-                    <td className="py-2 px-2">PROD002</td>
-                    <td className="py-2 px-2">EC</td>
+                    <td className="py-2 px-2">ANOTHER PRODUCT</td>
+                    <td className="py-2 px-2">EP</td>
                     <td className="py-2 px-2">2024-01-16</td>
                     <td className="py-2 px-2"></td>
                   </tr>
@@ -748,8 +749,8 @@ const Prospects: React.FC = () => {
               <ul className="list-disc pl-4 space-y-1">
                 <li><strong>Nama</strong> - Nama prospek (wajib)</li>
                 <li><strong>Telefon</strong> - No. telefon, mesti bermula dengan 6 (wajib)</li>
-                <li><strong>SKU</strong> - SKU produk dari senarai Product (wajib)</li>
-                <li><strong>Jenis</strong> - Jenis prospek: NP atau EC sahaja (wajib)</li>
+                <li><strong>Niche</strong> - Nama produk dari senarai Product (wajib)</li>
+                <li><strong>Jenis</strong> - Jenis prospek: NP atau EP sahaja (wajib)</li>
                 <li><strong>Tarikh</strong> - Format: YYYY-MM-DD (wajib)</li>
                 <li><strong>Admin</strong> - Admin ID Staff (optional)</li>
               </ul>

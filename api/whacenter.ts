@@ -67,6 +67,11 @@ export default async function handler(req: any, res: any) {
         url = `${API_BASE}/api/deleteDevice?api_key=${encodeURIComponent(API_KEY)}&device_id=${encodeURIComponent(device_id as string)}`
         break
 
+      case 'send':
+        const { number: sendNumber, message } = req.query
+        url = `${API_BASE}/api/send?device_id=${encodeURIComponent(device_id as string)}&number=${encodeURIComponent(sendNumber as string)}&message=${encodeURIComponent(message as string)}`
+        break
+
       default:
         return res.status(404).json({ error: 'Endpoint not found', endpoint })
     }

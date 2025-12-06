@@ -87,7 +87,7 @@ const navItems: NavItem[] = [
     roles: ['logistic'],
   },
   {
-    label: 'Shipment',
+    label: 'Processed',
     path: '/dashboard/logistics/shipment',
     icon: <Truck className="w-5 h-5" />,
     roles: ['logistic'],

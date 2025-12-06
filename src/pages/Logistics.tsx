@@ -49,10 +49,22 @@ const Logistics: React.FC = () => {
 
   // Checkbox selection state
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [selectedShipmentOrders, setSelectedShipmentOrders] = useState<Set<string>>(new Set());
+
+  // Pagination state for Shipment tab
+  const [shipmentPageSize, setShipmentPageSize] = useState(10);
+  const [shipmentCurrentPage, setShipmentCurrentPage] = useState(1);
+
+  // Filter states for Shipment tab
+  const [shipmentPlatformFilter, setShipmentPlatformFilter] = useState('All');
+  const [shipmentCaraBayaranFilter, setShipmentCaraBayaranFilter] = useState('All');
+  const [shipmentSearch, setShipmentSearch] = useState('');
 
   // Loading states
   const [isShipping, setIsShipping] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isPendingAction, setIsPendingAction] = useState(false);
+  const [isShipmentPrinting, setIsShipmentPrinting] = useState(false);
 
   // Determine current tab from URL path
   const getTabFromPath = () => {
@@ -71,7 +83,9 @@ const Logistics: React.FC = () => {
     navigate(`/dashboard/logistics/${value}`);
     // Reset selections when changing tabs
     setSelectedOrders(new Set());
+    setSelectedShipmentOrders(new Set());
     setCurrentPage(1);
+    setShipmentCurrentPage(1);
   };
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -144,10 +158,43 @@ const Logistics: React.FC = () => {
     const isShipped = order.deliveryStatus === 'Shipped';
     if (!isShipped) return false;
 
-    const matchesSearch =
-      order.marketerName.toLowerCase().includes(search.toLowerCase()) ||
-      order.noPhone.toLowerCase().includes(search.toLowerCase()) ||
-      order.alamat.toLowerCase().includes(search.toLowerCase());
+    // Advanced search with + for combining filters (e.g., "CASH+Facebook")
+    let matchesSearch = true;
+    if (shipmentSearch.trim()) {
+      const searchTerms = shipmentSearch.toLowerCase().split('+').map(s => s.trim()).filter(Boolean);
+
+      if (searchTerms.length > 1) {
+        // Multiple terms with + means ALL must match (AND logic)
+        matchesSearch = searchTerms.every(term => {
+          return (
+            order.marketerName.toLowerCase().includes(term) ||
+            order.noPhone.toLowerCase().includes(term) ||
+            order.alamat.toLowerCase().includes(term) ||
+            (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+            (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+            (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+            (order.produk && order.produk.toLowerCase().includes(term))
+          );
+        });
+      } else {
+        // Single term - normal search (OR logic)
+        const term = searchTerms[0] || '';
+        matchesSearch =
+          order.marketerName.toLowerCase().includes(term) ||
+          order.noPhone.toLowerCase().includes(term) ||
+          order.alamat.toLowerCase().includes(term) ||
+          (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+          (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+          (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+          (order.produk && order.produk.toLowerCase().includes(term));
+      }
+    }
+
+    // Platform filter
+    const matchesPlatform = shipmentPlatformFilter === 'All' || order.jenisPlatform === shipmentPlatformFilter;
+
+    // Cara Bayaran filter
+    const matchesCaraBayaran = shipmentCaraBayaranFilter === 'All' || order.caraBayaran === shipmentCaraBayaranFilter;
 
     // Date filter by date_processed
     let matchesDate = true;
@@ -165,7 +212,7 @@ const Logistics: React.FC = () => {
       }
     }
 
-    return matchesSearch && matchesDate;
+    return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
   });
 
   // Pagination logic for Order tab
@@ -173,6 +220,13 @@ const Logistics: React.FC = () => {
   const paginatedOrders = pendingOrders.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize
+  );
+
+  // Pagination logic for Shipment tab
+  const shipmentTotalPages = Math.ceil(shippedOrders.length / shipmentPageSize);
+  const paginatedShipmentOrders = shippedOrders.slice(
+    (shipmentCurrentPage - 1) * shipmentPageSize,
+    shipmentCurrentPage * shipmentPageSize
   );
 
   // Order tab counts - Pending orders
@@ -382,6 +436,173 @@ const Logistics: React.FC = () => {
     setSelectedOrders(new Set());
   };
 
+  // Reset page when shipment filters change
+  const handleShipmentFilterChange = () => {
+    setShipmentCurrentPage(1);
+    setSelectedShipmentOrders(new Set());
+  };
+
+  // Shipment checkbox handlers
+  const handleShipmentSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(paginatedShipmentOrders.map(order => order.id));
+      setSelectedShipmentOrders(allIds);
+    } else {
+      setSelectedShipmentOrders(new Set());
+    }
+  };
+
+  const handleShipmentSelectOrder = (orderId: string, checked: boolean) => {
+    const newSelection = new Set(selectedShipmentOrders);
+    if (checked) {
+      newSelection.add(orderId);
+    } else {
+      newSelection.delete(orderId);
+    }
+    setSelectedShipmentOrders(newSelection);
+  };
+
+  const isShipmentAllSelected = paginatedShipmentOrders.length > 0 && paginatedShipmentOrders.every(order => selectedShipmentOrders.has(order.id));
+  const isShipmentSomeSelected = selectedShipmentOrders.size > 0;
+
+  // Bulk Pending action - revert shipped orders back to pending
+  const handleBulkPending = async () => {
+    if (selectedShipmentOrders.size === 0) {
+      toast({
+        title: 'No orders selected',
+        description: 'Please select orders to mark as pending.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPendingAction(true);
+
+    try {
+      // Update all selected orders - set date_processed to null and delivery_status to Pending
+      const updatePromises = Array.from(selectedShipmentOrders).map(orderId =>
+        supabase
+          .from('customer_orders')
+          .update({
+            delivery_status: 'Pending',
+            date_processed: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', orderId)
+      );
+
+      await Promise.all(updatePromises);
+
+      toast({
+        title: 'Orders Reverted',
+        description: `${selectedShipmentOrders.size} order(s) have been reverted to Pending.`,
+      });
+
+      // Refresh data and clear selection
+      await refreshData();
+      setSelectedShipmentOrders(new Set());
+    } catch (error) {
+      console.error('Error updating orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update orders. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPendingAction(false);
+    }
+  };
+
+  // Bulk Print waybill action for Shipment tab
+  const handleShipmentBulkPrint = async () => {
+    if (selectedShipmentOrders.size === 0) {
+      toast({
+        title: 'No orders selected',
+        description: 'Please select orders to print waybills.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Get tracking numbers for selected orders (only Ninjavan orders)
+    const selectedOrdersList = paginatedShipmentOrders.filter(order => selectedShipmentOrders.has(order.id));
+    const ninjavanOrders = selectedOrdersList.filter(
+      order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
+    );
+
+    if (ninjavanOrders.length === 0) {
+      toast({
+        title: 'No Ninjavan orders',
+        description: 'Selected orders do not have Ninjavan tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      toast({
+        title: 'No tracking numbers',
+        description: 'Selected orders do not have tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsShipmentPrinting(true);
+
+    try {
+      // Call Ninjavan waybill function - returns PDF directly
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ trackingNumbers }),
+        }
+      );
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch waybill');
+        } else {
+          throw new Error(`Failed to fetch waybill: ${response.status}`);
+        }
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf')) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+
+        toast({
+          title: 'Waybill Generated',
+          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
+        });
+      } else {
+        const text = await response.text();
+        console.error('Unexpected response:', text);
+        throw new Error('Unexpected response format from server');
+      }
+    } catch (error: any) {
+      console.error('Error fetching waybill:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate waybill. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsShipmentPrinting(false);
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Pending':
@@ -564,12 +785,13 @@ const Logistics: React.FC = () => {
                     <th>Phone</th>
                     <th>Produk</th>
                     <th>Total Sales</th>
+                    <th>Cara Bayaran</th>
+                    <th>Delivery Status</th>
+                    <th>Tracking Number</th>
                     <th>Jenis Platform</th>
                     <th>Jenis Customer</th>
                     <th>Negeri</th>
                     <th>Alamat</th>
-                    <th>Cara Bayaran</th>
-                    <th>Delivery Status</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -590,6 +812,13 @@ const Logistics: React.FC = () => {
                         <td>{order.noPhone || '-'}</td>
                         <td>{order.produk || '-'}</td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
+                        <td>{order.caraBayaran || '-'}</td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
+                            {order.deliveryStatus || 'Pending'}
+                          </span>
+                        </td>
+                        <td>{order.noTracking || '-'}</td>
                         <td>{order.jenisPlatform || '-'}</td>
                         <td>{order.jenisCustomer || '-'}</td>
                         <td>{order.negeri || '-'}</td>
@@ -600,12 +829,6 @@ const Logistics: React.FC = () => {
                               {order.poskod} {order.bandar}
                             </p>
                           </div>
-                        </td>
-                        <td>{order.caraBayaran || '-'}</td>
-                        <td>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
-                            {order.deliveryStatus || 'Pending'}
-                          </span>
                         </td>
                         <td>
                           <Button
@@ -620,7 +843,7 @@ const Logistics: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={14}
+                        colSpan={15}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No pending orders found.
@@ -688,7 +911,7 @@ const Logistics: React.FC = () => {
         {/* Shipment Tab - Shipped orders */}
         <TabsContent value="shipment" className="space-y-6">
           {/* Section Title */}
-          <h2 className="text-xl font-semibold text-foreground">Shipment Management</h2>
+          <h2 className="text-xl font-semibold text-foreground">Processed Management</h2>
 
           {/* Shipment Stats - 3 boxes for Shipped orders */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -716,31 +939,115 @@ const Logistics: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name, phone, or address..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search... (use + to combine, e.g. CASH+Facebook)"
+                  value={shipmentSearch}
+                  onChange={(e) => { setShipmentSearch(e.target.value); handleShipmentFilterChange(); }}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={shipmentStartDate}
+                  onChange={(e) => { setShipmentStartDate(e.target.value); handleShipmentFilterChange(); }}
+                  className="w-40"
+                  placeholder="Start Date"
+                />
+                <Input
+                  type="date"
+                  value={shipmentEndDate}
+                  onChange={(e) => { setShipmentEndDate(e.target.value); handleShipmentFilterChange(); }}
+                  className="w-40"
+                  placeholder="End Date"
+                />
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Input
-                type="date"
-                value={shipmentStartDate}
-                onChange={(e) => setShipmentStartDate(e.target.value)}
-                className="w-40"
-                placeholder="Start Date"
-              />
-              <Input
-                type="date"
-                value={shipmentEndDate}
-                onChange={(e) => setShipmentEndDate(e.target.value)}
-                className="w-40"
-                placeholder="End Date"
-              />
+
+            {/* Additional Filters Row */}
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Platform Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Platform:</span>
+                <Select value={shipmentPlatformFilter} onValueChange={(value) => { setShipmentPlatformFilter(value); handleShipmentFilterChange(); }}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PLATFORM_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Cara Bayaran Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Cara Bayaran:</span>
+                <Select value={shipmentCaraBayaranFilter} onValueChange={(value) => { setShipmentCaraBayaranFilter(value); handleShipmentFilterChange(); }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARA_BAYARAN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Page Size Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <Select value={shipmentPageSize.toString()} onValueChange={(value) => { setShipmentPageSize(Number(value)); setShipmentCurrentPage(1); }}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleShipmentBulkPrint}
+                  disabled={!isShipmentSomeSelected || isShipmentPrinting}
+                  className="gap-2"
+                >
+                  {isShipmentPrinting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4" />
+                  )}
+                  Print ({selectedShipmentOrders.size})
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleBulkPending}
+                  disabled={!isShipmentSomeSelected || isPendingAction}
+                  className="gap-2"
+                >
+                  {isPendingAction ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Clock className="w-4 h-4" />
+                  )}
+                  Pending ({selectedShipmentOrders.size})
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -750,30 +1057,54 @@ const Logistics: React.FC = () => {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th className="w-10">
+                      <Checkbox
+                        checked={isShipmentAllSelected}
+                        onCheckedChange={handleShipmentSelectAll}
+                        aria-label="Select all"
+                      />
+                    </th>
                     <th>No</th>
+                    <th>Tarikh Process</th>
                     <th>Tarikh Order</th>
                     <th>Nama Pelanggan</th>
                     <th>Phone</th>
                     <th>Produk</th>
                     <th>Total Sales</th>
+                    <th>Cara Bayaran</th>
+                    <th>Delivery Status</th>
+                    <th>Tracking Number</th>
                     <th>Jenis Platform</th>
                     <th>Jenis Customer</th>
                     <th>Negeri</th>
                     <th>Alamat</th>
-                    <th>Cara Bayaran</th>
-                    <th>Delivery Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {shippedOrders.length > 0 ? (
-                    shippedOrders.map((order, index) => (
+                  {paginatedShipmentOrders.length > 0 ? (
+                    paginatedShipmentOrders.map((order, index) => (
                       <tr key={order.id}>
-                        <td>{index + 1}</td>
+                        <td>
+                          <Checkbox
+                            checked={selectedShipmentOrders.has(order.id)}
+                            onCheckedChange={(checked) => handleShipmentSelectOrder(order.id, checked as boolean)}
+                            aria-label={`Select order ${index + 1}`}
+                          />
+                        </td>
+                        <td>{(shipmentCurrentPage - 1) * shipmentPageSize + index + 1}</td>
+                        <td>{order.dateProcessed || '-'}</td>
                         <td>{order.dateOrder || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>{order.produk || '-'}</td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
+                        <td>{order.caraBayaran || '-'}</td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                            {order.deliveryStatus || 'Shipped'}
+                          </span>
+                        </td>
+                        <td>{order.noTracking || '-'}</td>
                         <td>{order.jenisPlatform || '-'}</td>
                         <td>{order.jenisCustomer || '-'}</td>
                         <td>{order.negeri || '-'}</td>
@@ -785,18 +1116,12 @@ const Logistics: React.FC = () => {
                             </p>
                           </div>
                         </td>
-                        <td>{order.caraBayaran || '-'}</td>
-                        <td>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
-                            {order.deliveryStatus || 'Shipped'}
-                          </span>
-                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={12}
+                        colSpan={15}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No shipped orders found.
@@ -806,6 +1131,58 @@ const Logistics: React.FC = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {shipmentTotalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(shipmentCurrentPage - 1) * shipmentPageSize + 1} to {Math.min(shipmentCurrentPage * shipmentPageSize, shippedOrders.length)} of {shippedOrders.length} entries
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShipmentCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={shipmentCurrentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, shipmentTotalPages) }, (_, i) => {
+                      let pageNum;
+                      if (shipmentTotalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (shipmentCurrentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (shipmentCurrentPage >= shipmentTotalPages - 2) {
+                        pageNum = shipmentTotalPages - 4 + i;
+                      } else {
+                        pageNum = shipmentCurrentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={shipmentCurrentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShipmentCurrentPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShipmentCurrentPage(prev => Math.min(shipmentTotalPages, prev + 1))}
+                    disabled={shipmentCurrentPage === shipmentTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </TabsContent>
 

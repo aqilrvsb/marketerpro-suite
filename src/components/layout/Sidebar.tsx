@@ -22,6 +22,7 @@ import {
   Trophy,
   UserCircle,
   RotateCcw,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -74,6 +75,12 @@ const navItems: NavItem[] = [
     path: '/dashboard/top10',
     icon: <Trophy className="w-5 h-5" />,
     roles: ['marketer', 'admin', 'bod'],
+  },
+  {
+    label: 'Report Sales',
+    path: '/dashboard/report-sales',
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    roles: ['bod'],
   },
   {
     label: 'Logistics',

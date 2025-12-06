@@ -471,6 +471,7 @@ const Orders: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Nama Pelanggan</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Produk</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Unit</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tracking No</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Total Sales</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Cara Bayaran</th>
@@ -500,6 +501,7 @@ const Orders: React.FC = () => {
                         return order.produk;
                       })()}
                     </td>
+                    <td className="px-4 py-3 text-sm text-foreground">{order.kuantiti || 1}</td>
                     <td className="px-4 py-3 text-sm font-mono text-foreground">
                       {order.noTracking ? (
                         order.noTracking
@@ -567,7 +569,7 @@ const Orders: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={14} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">
                     No orders found.
                   </td>
                 </tr>

@@ -475,6 +475,9 @@ const OrderForm: React.FC = () => {
           }
         }
 
+        // Get units from selected bundle for edit mode
+        const editBundleUnits = activeBundles.find(b => b.name === formData.produk)?.units || 1;
+
         // Update existing order in database
         const { error: updateError } = await supabase
           .from('customer_orders')
@@ -487,6 +490,7 @@ const OrderForm: React.FC = () => {
             negeri: formData.negeri,
             produk: formData.produk,
             sku: formData.produk,
+            kuantiti: editBundleUnits,
             harga_jualan_produk: formData.hargaJualan,
             harga_jualan_sebenar: formData.hargaJualan,
             profit: formData.hargaJualan,
@@ -616,6 +620,10 @@ const OrderForm: React.FC = () => {
           }
         }
 
+        // Get units from selected bundle
+        const selectedBundle = activeBundles.find(b => b.name === formData.produk);
+        const bundleUnits = selectedBundle?.units || 1;
+
         await addOrder({
           noTempahan: orderNumber,
           idSale: idSale,
@@ -628,7 +636,7 @@ const OrderForm: React.FC = () => {
           negeri: formData.negeri,
           sku: formData.produk,
           produk: formData.produk,
-          kuantiti: 1,
+          kuantiti: bundleUnits,
           hargaJualanProduk: formData.hargaJualan,
           hargaJualanSebenar: formData.hargaJualan,
           kosPos: 0,

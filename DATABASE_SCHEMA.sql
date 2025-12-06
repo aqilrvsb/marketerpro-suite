@@ -106,6 +106,7 @@ CREATE TABLE public.customer_orders (
   tarikh_tempahan text NOT NULL,             -- Order date (string format)
   date_order date DEFAULT CURRENT_DATE,      -- Order date
   date_processed date,
+  date_return date,                          -- Return date (when delivery_status = 'Return')
   jenis_platform text,                       -- Platform: Facebook, Tiktok, Shopee, Database, Google
   jenis_customer text,                       -- Customer type: NP, EP, EC, REPEAT
   cara_bayaran text,                         -- Payment method: CASH, COD

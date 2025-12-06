@@ -786,6 +786,7 @@ const Logistics: React.FC = () => {
                     <th>Nama Pelanggan</th>
                     <th>Phone</th>
                     <th>Produk</th>
+                    <th>Unit</th>
                     <th>Total Sales</th>
                     <th>Cara Bayaran</th>
                     <th>Delivery Status</th>
@@ -821,6 +822,7 @@ const Logistics: React.FC = () => {
                             return order.produk || '-';
                           })()}
                         </td>
+                        <td>{order.kuantiti || 1}</td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
                         <td>
                           {order.caraBayaran === 'CASH' ? (
@@ -861,7 +863,7 @@ const Logistics: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={15}
+                        colSpan={16}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No pending orders found.
@@ -1088,6 +1090,7 @@ const Logistics: React.FC = () => {
                     <th>Nama Pelanggan</th>
                     <th>Phone</th>
                     <th>Produk</th>
+                    <th>Unit</th>
                     <th>Total Sales</th>
                     <th>Cara Bayaran</th>
                     <th>Delivery Status</th>
@@ -1123,6 +1126,7 @@ const Logistics: React.FC = () => {
                             return order.produk || '-';
                           })()}
                         </td>
+                        <td>{order.kuantiti || 1}</td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
                         <td>
                           {order.caraBayaran === 'CASH' ? (
@@ -1155,7 +1159,7 @@ const Logistics: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={15}
+                        colSpan={16}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No shipped orders found.

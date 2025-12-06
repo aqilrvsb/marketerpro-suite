@@ -90,8 +90,14 @@ const navItems: NavItem[] = [
   },
   {
     label: 'Dashboard Logistic',
-    path: '/dashboard/logistics',
+    path: '/dashboard/dashboard-logistic',
     icon: <Truck className="w-5 h-5" />,
+    roles: ['bod'],
+  },
+  {
+    label: 'Report Pembelian',
+    path: '/dashboard/report-pembelian',
+    icon: <ShoppingCart className="w-5 h-5" />,
     roles: ['bod'],
   },
   {

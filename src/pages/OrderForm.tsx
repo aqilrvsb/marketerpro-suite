@@ -674,23 +674,22 @@ const OrderForm: React.FC = () => {
           waybillUrl: waybillUrl,
         });
 
-        // If NP or EP, find latest lead from this marketer matching SKU (niche) and update status_closed and price_closed
+        // If NP or EP, find lead from this marketer matching phone number and update status_closed and price_closed
         if (formData.jenisCustomer === 'NP' || formData.jenisCustomer === 'EP') {
           try {
-            // Get the SKU from the selected bundle
-            const selectedBundle = activeBundles.find(b => b.name === formData.produk);
-            const productSku = selectedBundle?.productSku || '';
-            
-            const { data: latestLead } = await supabase
+            const marketerIdStaff = profile?.username || '';
+
+            const { data: matchingLead } = await supabase
               .from('prospects')
               .select('id')
+              .eq('marketer_id_staff', marketerIdStaff)
+              .eq('no_telefon', formData.noPhone)
               .eq('jenis_prospek', formData.jenisCustomer)
-              .eq('niche', productSku)
               .order('created_at', { ascending: false })
               .limit(1)
               .single();
-            
-            if (latestLead) {
+
+            if (matchingLead) {
               await supabase
                 .from('prospects')
                 .update({
@@ -698,7 +697,7 @@ const OrderForm: React.FC = () => {
                   price_closed: formData.hargaJualan,
                   updated_at: new Date().toISOString(),
                 })
-                .eq('id', latestLead.id);
+                .eq('id', matchingLead.id);
             }
           } catch (err) {
             console.error('Error updating prospect:', err);

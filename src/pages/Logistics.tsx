@@ -316,10 +316,10 @@ const Logistics: React.FC = () => {
     return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
   });
 
-  // Filter orders for Pending Tracking tab - Shipped AND SEO != 'Successfull Delivery' AND COD only, filter by date_order
+  // Filter orders for Pending Tracking tab - Shipped AND (SEO is null OR SEO != 'Successfull Delivery') AND COD only, filter by date_order
   const pendingTrackingOrders = orders.filter((order) => {
     const isShipped = order.deliveryStatus === 'Shipped';
-    const seoNotSuccess = order.seo !== 'Successfull Delivery';
+    const seoNotSuccess = !order.seo || order.seo !== 'Successfull Delivery';
     const isCOD = order.caraBayaran === 'COD';
     if (!isShipped || !seoNotSuccess || !isCOD) return false;
 

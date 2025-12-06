@@ -3,7 +3,7 @@
 -- =====================================================
 -- WARNING: This schema is for context only and is not meant to be run directly.
 -- Use this file as a reference when developing new features or fixes.
--- Last Updated: 2024-12-06
+-- Last Updated: 2024-12-07
 -- =====================================================
 
 -- =====================================================
@@ -125,7 +125,7 @@ CREATE TABLE public.customer_orders (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   -- Payment Details (for CASH payments)
-  tarikh_bayaran date,                       -- Payment date
+  tarikh_bayaran date,                       -- Payment date (also used for COD success date)
   jenis_bayaran text,                        -- Payment type: Online Transfer, Credit Card, CDM, CASH
   bank text,                                 -- Bank name
   receipt_image_url text,                    -- Receipt image URL (Vercel Blob)
@@ -264,8 +264,16 @@ CREATE TABLE public.ninjavan_tokens (
 --    - Pending → Shipped → Success/Failed/Return
 --    - date_processed: Set when status changes to Shipped
 --    - date_return: Set when status changes to Return
+--    - tarikh_bayaran: Set when COD is successfully delivered (SEO = 'Successfull Delivery')
 --
 -- 7. Bundle Pricing:
 --    - 9 price columns for 3 platforms x 3 customer types
 --    - Platforms: Normal (Facebook/Database/Google), Shopee, TikTok
 --    - Customer Types: NP (New Prospect), EP (Existing Prospect), EC (Existing Customer)
+--
+-- 8. SEO Status (for Pending Tracking):
+--    - null: Not yet processed
+--    - 'Shipped': Order has been shipped (set when clicking Shipped button)
+--    - 'Successfull Delivery': COD payment received
+--    - 'Return': Order returned
+--    - Pending Tracking shows: delivery_status = 'Shipped' AND (seo IS NULL OR seo != 'Successfull Delivery') AND cara_bayaran = 'COD'

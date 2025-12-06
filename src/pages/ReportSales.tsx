@@ -26,7 +26,7 @@ interface Spend {
 
 interface Prospect {
   id: string;
-  admin_id_staff: string;
+  marketer_id_staff: string;
   tarikh_phone_number: string;
   status_closed: string;
 }
@@ -82,7 +82,7 @@ const ReportSales: React.FC = () => {
             .select('id, marketer_id_staff, total_spend, tarikh_spend'),
           (supabase as any)
             .from('prospects')
-            .select('id, admin_id_staff, tarikh_phone_number, status_closed'),
+            .select('id, marketer_id_staff, tarikh_phone_number, status_closed'),
         ]);
 
         if (ordersRes.error) throw ordersRes.error;
@@ -228,7 +228,7 @@ const ReportSales: React.FC = () => {
 
     // Process prospects
     filteredProspects.forEach(prospect => {
-      const idStaff = prospect.admin_id_staff;
+      const idStaff = prospect.marketer_id_staff;
       if (stats[idStaff]) {
         stats[idStaff].totalLead += 1;
         if (prospect.status_closed && prospect.status_closed.trim() !== '') {
@@ -249,7 +249,7 @@ const ReportSales: React.FC = () => {
       stat.averageKPK = stat.totalLead > 0 ? stat.totalSpend / stat.totalLead : 0;
 
       // Closing rate (need to count closed leads)
-      const marketerProspects = filteredProspects.filter(p => p.admin_id_staff === stat.idStaff);
+      const marketerProspects = filteredProspects.filter(p => p.marketer_id_staff === stat.idStaff);
       const closedLeads = marketerProspects.filter(p => p.status_closed && p.status_closed.trim() !== '').length;
       stat.closingRate = marketerProspects.length > 0 ? (closedLeads / marketerProspects.length) * 100 : 0;
     });

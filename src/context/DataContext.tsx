@@ -21,7 +21,7 @@ interface CustomerOrder {
 
 interface Prospect {
   id: string; namaProspek: string; noTelefon: string; niche: string; jenisProspek: string;
-  tarikhPhoneNumber: string; adminIdStaff: string; createdAt: string;
+  tarikhPhoneNumber: string; adminIdStaff: string; marketerIdStaff: string; createdAt: string;
   statusClosed: string; priceClosed: number;
 }
 
@@ -72,8 +72,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const mapProspect = (d: any): Prospect => ({
     id: d.id, namaProspek: d.nama_prospek, noTelefon: d.no_telefon, niche: d.niche,
     jenisProspek: d.jenis_prospek, tarikhPhoneNumber: d.tarikh_phone_number || '',
-    adminIdStaff: d.admin_id_staff || '', createdAt: d.created_at,
-    statusClosed: d.status_closed || '', priceClosed: parseFloat(d.price_closed) || 0,
+    adminIdStaff: d.admin_id_staff || '', marketerIdStaff: d.marketer_id_staff || '',
+    createdAt: d.created_at, statusClosed: d.status_closed || '', priceClosed: parseFloat(d.price_closed) || 0,
   });
 
   const refreshData = async () => {
@@ -87,7 +87,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Marketers only see their own data
       if (isMarketer && userIdStaff) {
         ordersQuery = ordersQuery.eq('marketer_id_staff', userIdStaff);
-        prospectsQuery = prospectsQuery.eq('admin_id_staff', userIdStaff);
+        prospectsQuery = prospectsQuery.eq('marketer_id_staff', userIdStaff);
       }
 
       const [ordersRes, prospectsRes] = await Promise.all([ordersQuery, prospectsQuery]);
@@ -143,13 +143,14 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const addProspect = async (prospect: Omit<Prospect, 'id' | 'createdAt'>) => {
-    // For marketers, auto-set admin_id_staff to their own idstaff if not provided
-    const adminIdStaff = prospect.adminIdStaff || (isMarketer ? userIdStaff : null);
+    // For marketers, auto-set marketer_id_staff to their own idstaff
+    const marketerIdStaff = isMarketer ? userIdStaff : (prospect.marketerIdStaff || null);
 
     const { error } = await queryTable('prospects').insert({
       nama_prospek: prospect.namaProspek, no_telefon: prospect.noTelefon, niche: prospect.niche,
       jenis_prospek: prospect.jenisProspek, tarikh_phone_number: prospect.tarikhPhoneNumber || null,
-      admin_id_staff: adminIdStaff, created_by: user?.id,
+      admin_id_staff: prospect.adminIdStaff || null, marketer_id_staff: marketerIdStaff,
+      created_by: user?.id,
     });
     if (error) { toast({ title: 'Error', description: 'Failed to add prospect.', variant: 'destructive' }); throw error; }
     await refreshData();
@@ -162,7 +163,8 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (data.niche !== undefined) upd.niche = data.niche;
     if (data.jenisProspek !== undefined) upd.jenis_prospek = data.jenisProspek;
     if (data.tarikhPhoneNumber !== undefined) upd.tarikh_phone_number = data.tarikhPhoneNumber || null;
-    if (data.adminIdStaff !== undefined) upd.admin_id_staff = data.adminIdStaff;
+    if (data.adminIdStaff !== undefined) upd.admin_id_staff = data.adminIdStaff || null;
+    if (data.marketerIdStaff !== undefined) upd.marketer_id_staff = data.marketerIdStaff;
     if (data.statusClosed !== undefined) upd.status_closed = data.statusClosed;
     if (data.priceClosed !== undefined) upd.price_closed = data.priceClosed;
     const { error } = await queryTable('prospects').update(upd).eq('id', id);

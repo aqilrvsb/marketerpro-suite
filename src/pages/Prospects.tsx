@@ -55,17 +55,13 @@ const Prospects: React.FC = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [showFormatDialog, setShowFormatDialog] = useState(false);
 
-  // For marketers, auto-fill adminIdStaff with their own idstaff
-  const isMarketer = profile?.role === 'marketer';
-  const userIdStaff = profile?.idstaff || '';
-
   const [formData, setFormData] = useState({
     namaProspek: '',
     noTelefon: '',
     niche: '',
     jenisProspek: '',
     tarikhPhoneNumber: '',
-    adminIdStaff: isMarketer ? userIdStaff : '',
+    adminIdStaff: '',
   });
 
   const canCreate = profile?.role === 'marketer' || profile?.role === 'admin';
@@ -121,7 +117,7 @@ const Prospects: React.FC = () => {
       niche: '',
       jenisProspek: '',
       tarikhPhoneNumber: '',
-      adminIdStaff: isMarketer ? userIdStaff : '',
+      adminIdStaff: '',
     });
     setEditingProspect(null);
   };
@@ -173,6 +169,7 @@ const Prospects: React.FC = () => {
           jenisProspek: formData.jenisProspek,
           tarikhPhoneNumber: formData.tarikhPhoneNumber,
           adminIdStaff: formData.adminIdStaff,
+          marketerIdStaff: '', // Will be auto-filled in DataContext for marketers
           statusClosed: '',
           priceClosed: 0,
         });

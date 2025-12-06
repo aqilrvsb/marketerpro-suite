@@ -252,7 +252,7 @@ const Logistics: React.FC = () => {
             (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
             (order.negeri && order.negeri.toLowerCase().includes(term)) ||
             (order.produk && order.produk.toLowerCase().includes(term)) ||
-            (order.idstaff && order.idstaff.toLowerCase().includes(term))
+            (order.marketerIdStaff && order.marketerIdStaff.toLowerCase().includes(term))
           );
         });
       } else {
@@ -1023,7 +1023,7 @@ const Logistics: React.FC = () => {
                         </td>
                         <td>{(currentPage - 1) * pageSize + index + 1}</td>
                         <td>{order.dateOrder || '-'}</td>
-                        <td>{order.idstaff || '-'}</td>
+                        <td>{order.marketerIdStaff || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>
@@ -1329,7 +1329,7 @@ const Logistics: React.FC = () => {
                         <td>{(shipmentCurrentPage - 1) * shipmentPageSize + index + 1}</td>
                         <td>{order.dateProcessed || '-'}</td>
                         <td>{order.dateOrder || '-'}</td>
-                        <td>{order.idstaff || '-'}</td>
+                        <td>{order.marketerIdStaff || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>
@@ -1614,7 +1614,7 @@ const Logistics: React.FC = () => {
                         <td>{(returnCurrentPage - 1) * returnPageSize + index + 1}</td>
                         <td>{order.dateReturn || '-'}</td>
                         <td>{order.dateOrder || '-'}</td>
-                        <td>{order.idstaff || '-'}</td>
+                        <td>{order.marketerIdStaff || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>

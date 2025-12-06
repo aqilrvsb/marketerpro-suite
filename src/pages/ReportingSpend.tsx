@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useData } from '@/context/DataContext';
 import { useBundles } from '@/context/BundleContext';
+import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -42,16 +43,28 @@ interface AggregatedSpend {
 const ReportingSpend: React.FC = () => {
   const { prospects } = useData();
   const { products } = useBundles();
+  const { profile } = useAuth();
   const [spends, setSpends] = useState<Spend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
+  // Check if current user is marketer (should only see their own data)
+  const isMarketer = profile?.role === 'marketer';
+  const userIdStaff = profile?.idstaff;
+
   // Fetch spends data
   const fetchSpends = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase as any).from('spends').select('*').order('created_at', { ascending: false });
+      let query = (supabase as any).from('spends').select('*').order('created_at', { ascending: false });
+
+      // Marketers only see their own spends
+      if (isMarketer && userIdStaff) {
+        query = query.eq('marketer_id_staff', userIdStaff);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setSpends((data || []).map((d: any) => ({
         id: d.id,
@@ -71,7 +84,7 @@ const ReportingSpend: React.FC = () => {
 
   React.useEffect(() => {
     fetchSpends();
-  }, []);
+  }, [isMarketer, userIdStaff]);
 
   // Filter spends based on date range
   const filteredSpends = useMemo(() => {

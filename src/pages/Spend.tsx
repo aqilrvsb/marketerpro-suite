@@ -77,11 +77,22 @@ const Spend: React.FC = () => {
 
   const canCreate = profile?.role === 'marketer' || profile?.role === 'admin';
 
+  // Check if current user is marketer (should only see their own data)
+  const isMarketer = profile?.role === 'marketer';
+  const userIdStaff = profile?.idstaff;
+
   // Fetch spends data
   const fetchSpends = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase as any).from('spends').select('*').order('created_at', { ascending: false });
+      let query = (supabase as any).from('spends').select('*').order('created_at', { ascending: false });
+
+      // Marketers only see their own spends
+      if (isMarketer && userIdStaff) {
+        query = query.eq('marketer_id_staff', userIdStaff);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setSpends((data || []).map((d: any) => ({
         id: d.id,
@@ -101,7 +112,7 @@ const Spend: React.FC = () => {
 
   React.useEffect(() => {
     fetchSpends();
-  }, []);
+  }, [isMarketer, userIdStaff]);
 
   // Filter spends based on date range
   const filteredSpends = useMemo(() => {
@@ -181,7 +192,7 @@ const Spend: React.FC = () => {
           jenis_platform: formData.jenisPlatform,
           total_spend: parseFloat(formData.totalSpend),
           tarikh_spend: formData.tarikhSpend,
-          marketer_id_staff: profile?.username || '',
+          marketer_id_staff: profile?.idstaff || '',
         });
         
         if (error) throw error;

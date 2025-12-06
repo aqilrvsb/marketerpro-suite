@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+// Roles that can see all data (not filtered by their own idstaff)
+const ADMIN_ROLES = ['admin', 'bod', 'logistic', 'account'];
+
 interface CustomerOrder {
   id: string; noTempahan: string; idSale: string; marketerIdStaff: string; marketerName: string; noPhone: string;
   alamat: string; poskod: string; bandar: string; negeri: string; sku: string; produk: string;
@@ -43,7 +46,11 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { user, isAuthenticated } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
+
+  // Check if current user is marketer (should only see their own data)
+  const isMarketer = profile?.role === 'marketer';
+  const userIdStaff = profile?.idstaff;
 
   const mapOrder = (d: any): CustomerOrder => ({
     id: d.id, noTempahan: d.no_tempahan, idSale: d.id_sale || '', marketerIdStaff: d.marketer_id_staff, marketerName: d.marketer_name,
@@ -70,17 +77,24 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!isAuthenticated) { setOrders([]); setProspects([]); setIsLoading(false); return; }
     setIsLoading(true);
     try {
-      const [ordersRes, prospectsRes] = await Promise.all([
-        queryTable('customer_orders').select('*').order('created_at', { ascending: false }),
-        queryTable('prospects').select('*').order('created_at', { ascending: false }),
-      ]);
+      // Build queries - filter by marketer's idstaff if user is a marketer
+      let ordersQuery = queryTable('customer_orders').select('*').order('created_at', { ascending: false });
+      let prospectsQuery = queryTable('prospects').select('*').order('created_at', { ascending: false });
+
+      // Marketers only see their own data
+      if (isMarketer && userIdStaff) {
+        ordersQuery = ordersQuery.eq('marketer_id_staff', userIdStaff);
+        prospectsQuery = prospectsQuery.eq('admin_id_staff', userIdStaff);
+      }
+
+      const [ordersRes, prospectsRes] = await Promise.all([ordersQuery, prospectsQuery]);
       setOrders((ordersRes.data || []).map(mapOrder));
       setProspects((prospectsRes.data || []).map(mapProspect));
     } catch (e) { console.error('Error:', e); }
     setIsLoading(false);
   };
 
-  useEffect(() => { refreshData(); }, [isAuthenticated]);
+  useEffect(() => { refreshData(); }, [isAuthenticated, isMarketer, userIdStaff]);
 
   const addOrder = async (order: Omit<CustomerOrder, 'id' | 'createdAt'>) => {
     const { error } = await queryTable('customer_orders').insert({

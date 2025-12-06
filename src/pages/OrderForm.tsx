@@ -761,8 +761,9 @@ const OrderForm: React.FC = () => {
               <Select
                 value={formData.jenisPlatform}
                 onValueChange={(value) => handleChange('jenisPlatform', value)}
+                disabled={isEditMode && profile?.role === 'marketer'}
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
                   <SelectValue placeholder="Pilih Platform" />
                 </SelectTrigger>
                 <SelectContent>
@@ -779,8 +780,9 @@ const OrderForm: React.FC = () => {
               <Select
                 value={formData.jenisCustomer}
                 onValueChange={(value) => handleChange('jenisCustomer', value)}
+                disabled={isEditMode && profile?.role === 'marketer'}
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
                   <SelectValue placeholder="Pilih Jenis Customer" />
                 </SelectTrigger>
                 <SelectContent>
@@ -850,9 +852,9 @@ const OrderForm: React.FC = () => {
               <Select
                 value={formData.produk}
                 onValueChange={(value) => handleChange('produk', value)}
-                disabled={bundlesLoading}
+                disabled={bundlesLoading || (isEditMode && profile?.role === 'marketer')}
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
                   <SelectValue placeholder={bundlesLoading ? "Loading..." : "Pilih Produk"} />
                 </SelectTrigger>
                 <SelectContent>
@@ -879,7 +881,8 @@ const OrderForm: React.FC = () => {
                 placeholder="0.00"
                 value={formData.hargaJualan || ''}
                 onChange={(e) => handleChange('hargaJualan', parseFloat(e.target.value) || 0)}
-                className={cn("bg-background", isPriceBelowMinimum && "border-red-500 focus-visible:ring-red-500")}
+                disabled={isEditMode && profile?.role === 'marketer'}
+                className={cn("bg-background", isPriceBelowMinimum && "border-red-500 focus-visible:ring-red-500", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}
               />
               {currentMinPrice > 0 && (
                 <p className={cn("text-xs mt-1", isPriceBelowMinimum ? "text-red-500" : "text-muted-foreground")}>
@@ -895,8 +898,9 @@ const OrderForm: React.FC = () => {
               <Select
                 value={formData.caraBayaran}
                 onValueChange={(value) => handleChange('caraBayaran', value)}
+                disabled={isEditMode && profile?.role === 'marketer'}
               >
-                <SelectTrigger className="bg-background">
+                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
                   <SelectValue placeholder="Pilih Cara Bayaran" />
                 </SelectTrigger>
                 <SelectContent>

@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
     label: 'History',
     path: '/dashboard/orders',
     icon: <History className="w-5 h-5" />,
-    roles: ['marketer', 'admin', 'bod', 'logistic', 'account'],
+    roles: ['marketer', 'admin', 'bod', 'account'],
   },
   {
     label: 'Leads',

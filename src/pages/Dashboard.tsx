@@ -33,7 +33,30 @@ import {
   LineChart as LineChartIcon,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval, eachDayOfInterval } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
+  Filler,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  ChartLegend,
+  Filler
+);
 
 interface Spend {
   id: string;
@@ -434,9 +457,9 @@ const Dashboard: React.FC = () => {
     };
   }, [filteredAllOrders, filteredAllSpends, filteredAllProspects]);
 
-  // Chart data for BOD - Sales by date
+  // Chart data for BOD - Sales by date (Chart.js format)
   const bodChartData = useMemo(() => {
-    if (!startDate || !endDate) return [];
+    if (!startDate || !endDate) return { labels: [], datasets: [] };
 
     try {
       const days = eachDayOfInterval({
@@ -444,27 +467,116 @@ const Dashboard: React.FC = () => {
         end: parseISO(endDate)
       });
 
-      return days.map(day => {
+      const labels = days.map(day => format(day, 'dd-MMM'));
+      const totalSalesData: number[] = [];
+      const salesNPData: number[] = [];
+      const salesEPData: number[] = [];
+      const salesECData: number[] = [];
+
+      days.forEach(day => {
         const dateStr = format(day, 'yyyy-MM-dd');
         const dayOrders = filteredAllOrders.filter(o => o.date_order === dateStr);
 
-        const totalSales = dayOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
-        const salesNP = dayOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
-        const salesEP = dayOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
-        const salesEC = dayOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
-
-        return {
-          date: format(day, 'dd-MMM'),
-          'Total Sales': totalSales,
-          'Sales NP': salesNP,
-          'Sales EP': salesEP,
-          'Sales EC': salesEC,
-        };
+        totalSalesData.push(dayOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0));
+        salesNPData.push(dayOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0));
+        salesEPData.push(dayOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0));
+        salesECData.push(dayOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0));
       });
+
+      return {
+        labels,
+        datasets: [
+          {
+            label: 'Total Sales',
+            data: totalSalesData,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+          },
+          {
+            label: 'Sales NP',
+            data: salesNPData,
+            borderColor: '#06b6d4',
+            backgroundColor: 'rgba(6, 182, 212, 0.1)',
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+          },
+          {
+            label: 'Sales EP',
+            data: salesEPData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+          },
+          {
+            label: 'Sales EC',
+            data: salesECData,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+          },
+        ],
+      };
     } catch {
-      return [];
+      return { labels: [], datasets: [] };
     }
   }, [filteredAllOrders, startDate, endDate]);
+
+  // Chart.js options for BOD chart
+  const bodChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+        },
+      },
+      tooltip: {
+        mode: 'index' as const,
+        intersect: false,
+        callbacks: {
+          label: function(context: any) {
+            const value = context.parsed.y;
+            return `${context.dataset.label}: RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: {
+          callback: function(value: any) {
+            return `RM ${(value / 1000).toFixed(0)}k`;
+          },
+        },
+      },
+    },
+    interaction: {
+      mode: 'nearest' as const,
+      axis: 'x' as const,
+      intersect: false,
+    },
+  };
 
   const formatCurrency = (value: number) => {
     return `RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -1075,7 +1187,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Sales Chart */}
+        {/* Sales Chart - Chart.js */}
         <div className="stat-card">
           <div className="flex items-center gap-2 mb-4">
             <LineChartIcon className="w-5 h-5 text-primary" />
@@ -1084,56 +1196,7 @@ const Dashboard: React.FC = () => {
             </h2>
           </div>
           <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={bodChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
-                />
-                <YAxis
-                  tick={{ fontSize: 12 }}
-                  tickFormatter={(value) => `RM ${(value / 1000).toFixed(0)}k`}
-                  className="text-muted-foreground"
-                />
-                <Tooltip
-                  formatter={(value: number) => [`RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2 })}`, '']}
-                  labelStyle={{ color: '#333' }}
-                  contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
-                />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="Total Sales"
-                  stroke="#22c55e"
-                  strokeWidth={2}
-                  dot={{ fill: '#22c55e', strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="Sales NP"
-                  stroke="#06b6d4"
-                  strokeWidth={2}
-                  dot={{ fill: '#06b6d4', strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="Sales EP"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={{ fill: '#f59e0b', strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="Sales EC"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={{ fill: '#10b981', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            <Line data={bodChartData} options={bodChartOptions} />
           </div>
         </div>
       </div>

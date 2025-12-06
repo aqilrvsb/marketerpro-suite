@@ -2,8 +2,9 @@
 -- DFR Empire Database Schema Reference
 -- =====================================================
 -- WARNING: This schema is for context only and is not meant to be run directly.
+-- Table order and constraints may not be valid for execution.
 -- Use this file as a reference when developing new features or fixes.
--- Last Updated: 2024-12-07
+-- Last Updated: 2025-12-07
 -- =====================================================
 
 -- =====================================================
@@ -59,13 +60,16 @@ CREATE TABLE public.products (
 -- =====================================================
 -- TABLE: bundles (Product bundles with pricing)
 -- =====================================================
+-- Pricing Matrix: 3 platforms x 3 customer types = 9 price columns
+-- Platforms: Normal (Facebook/Database/Google), Shopee, TikTok
+-- Customer Types: NP (New Prospect), EP (Existing Prospect), EC (Existing Customer)
 CREATE TABLE public.bundles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
   units integer NOT NULL DEFAULT 1,
-  price_normal numeric NOT NULL DEFAULT 0,    -- Legacy: Normal price
-  price_shopee numeric NOT NULL DEFAULT 0,    -- Legacy: Shopee price
-  price_tiktok numeric NOT NULL DEFAULT 0,    -- Legacy: TikTok price
+  price_normal numeric NOT NULL DEFAULT 0,    -- Legacy: Normal price (deprecated)
+  price_shopee numeric NOT NULL DEFAULT 0,    -- Legacy: Shopee price (deprecated)
+  price_tiktok numeric NOT NULL DEFAULT 0,    -- Legacy: TikTok price (deprecated)
   product_id uuid,                            -- Linked product
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -93,7 +97,7 @@ CREATE TABLE public.customer_orders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   no_tempahan text NOT NULL,                 -- Order number (auto-generated)
   id_sale text,                              -- Sale ID for Ninjavan (DF00001, DF00002, etc.)
-  marketer_id uuid,
+  marketer_id uuid,                          -- Reference to profiles.id (optional)
   marketer_id_staff text NOT NULL,           -- Staff ID of marketer
   marketer_name text NOT NULL,               -- Customer name (displayed as marketer_name)
   no_phone text NOT NULL,                    -- Customer phone
@@ -104,19 +108,19 @@ CREATE TABLE public.customer_orders (
   produk text NOT NULL,                      -- Bundle name
   sku text NOT NULL,
   kuantiti integer NOT NULL DEFAULT 1,
-  harga_jualan_produk numeric DEFAULT 0,
+  harga_jualan_produk numeric DEFAULT 0,     -- Product selling price
   harga_jualan_sebenar numeric NOT NULL,     -- Actual selling price
-  harga_jualan_agen numeric DEFAULT 0,
-  kos_pos numeric DEFAULT 0,
-  kos_produk numeric DEFAULT 0,
-  profit numeric DEFAULT 0,
+  harga_jualan_agen numeric DEFAULT 0,       -- Agent selling price
+  kos_pos numeric DEFAULT 0,                 -- Shipping cost
+  kos_produk numeric DEFAULT 0,              -- Product cost
+  profit numeric DEFAULT 0,                  -- Profit
   kurier text,                               -- Courier (Ninjavan, Shopee, Tiktok)
-  berat_parcel integer DEFAULT 0,
+  berat_parcel integer DEFAULT 0,            -- Parcel weight (grams)
   no_tracking text,                          -- Tracking number
-  status_parcel text DEFAULT 'Pending'::text,
+  status_parcel text DEFAULT 'Pending'::text,-- Parcel status
   nota_staff text,                           -- Staff notes
-  tarikh_tempahan text NOT NULL,             -- Order date (string format)
-  date_order date DEFAULT CURRENT_DATE,      -- Order date
+  tarikh_tempahan text NOT NULL,             -- Order date (string format for display)
+  date_order date DEFAULT CURRENT_DATE,      -- Order date (for filtering/sorting)
   date_processed date,                       -- Processed date (when delivery_status = 'Shipped')
   jenis_platform text,                       -- Platform: Facebook, Tiktok, Shopee, Database, Google
   jenis_customer text,                       -- Customer type: NP, EP, EC
@@ -144,9 +148,9 @@ CREATE TABLE public.prospects (
   no_telefon text NOT NULL,                  -- Phone number
   niche text NOT NULL,                       -- Niche/category
   jenis_prospek text NOT NULL,               -- Prospect type
-  tarikh_phone_number date,
-  admin_id_staff text,                       -- Admin staff ID
-  created_by uuid,
+  tarikh_phone_number date,                  -- Date of phone number entry
+  admin_id_staff text,                       -- Staff ID who created it
+  created_by uuid,                           -- Reference to profiles.id
   status_closed text,                        -- Closed status
   price_closed numeric,                      -- Closed price
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -179,7 +183,7 @@ CREATE TABLE public.stock_movements (
   quantity integer NOT NULL,
   date date NOT NULL DEFAULT CURRENT_DATE,
   description text,
-  master_agent_id text,
+  master_agent_id text,                      -- Master agent reference
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT stock_movements_pkey PRIMARY KEY (id),
@@ -246,34 +250,54 @@ CREATE TABLE public.ninjavan_tokens (
 --    - Token: VITE_BLOB_READ_WRITE_TOKEN (client) / BLOB_READ_WRITE_TOKEN (server)
 --
 -- 3. Platforms:
---    - Facebook, Database, Google → Uses Ninjavan courier
---    - Shopee, Tiktok → Manual waybill upload, no Ninjavan
+--    - Facebook, Database, Google -> Uses Ninjavan courier (Order Biasa)
+--    - Shopee, Tiktok -> Manual waybill upload, no Ninjavan
 --
 -- 4. Payment Methods:
---    - CASH → Shows payment details modal with receipt
---    - COD → Cash on delivery, no upfront payment
+--    - CASH -> Shows payment details modal with receipt
+--    - COD -> Cash on delivery, no upfront payment
 --
--- 5. Roles:
---    - marketer: Can create orders, manage leads, view spend
+-- 5. Roles & Dashboard Access:
+--    - marketer: Own orders, leads, spend. Dashboard shows sales stats.
 --    - admin: Full access except logistics
 --    - bod: Board of directors, view access
---    - logistic: Logistics management, products, bundles
+--    - logistic: Logistics management, products, bundles. Dashboard shows order counts.
 --    - account: Finance and reports access
 --
 -- 6. Delivery Status Flow:
---    - Pending → Shipped → Success/Failed/Return
+--    - Pending -> Shipped -> Success/Failed/Return
 --    - date_processed: Set when status changes to Shipped
 --    - date_return: Set when status changes to Return
 --    - tarikh_bayaran: Set when COD is successfully delivered (SEO = 'Successfull Delivery')
 --
--- 7. Bundle Pricing:
+-- 7. Bundle Pricing Matrix:
 --    - 9 price columns for 3 platforms x 3 customer types
 --    - Platforms: Normal (Facebook/Database/Google), Shopee, TikTok
 --    - Customer Types: NP (New Prospect), EP (Existing Prospect), EC (Existing Customer)
+--    - Legacy columns (price_normal, price_shopee, price_tiktok) are deprecated
 --
 -- 8. SEO Status (for Pending Tracking):
 --    - null: Not yet processed
 --    - 'Shipped': Order has been shipped (set when clicking Shipped button)
 --    - 'Successfull Delivery': COD payment received
 --    - 'Return': Order returned
---    - Pending Tracking shows: delivery_status = 'Shipped' AND (seo IS NULL OR seo != 'Successfull Delivery') AND cara_bayaran = 'COD'
+--    - Pending Tracking filter: delivery_status = 'Shipped'
+--      AND (seo IS NULL OR seo != 'Successfull Delivery')
+--      AND cara_bayaran = 'COD'
+--
+-- 9. Dashboard Stats by Role:
+--    - Marketer Dashboard (15 boxes):
+--      Total Sales, Return, Total Spend, ROAS,
+--      Sales FB, Sales Database, Sales Shopee, Sales TikTok, Sales Google,
+--      Sales NP, Sales EP, Sales EC,
+--      Total Lead, Average KPK, Closing Rate
+--
+--    - Logistic Dashboard (10 boxes):
+--      Total Order, Total Pending, Total Process, Total Return,
+--      Total Order Biasa, Total Shopee, Total TikTok,
+--      Total Cash, Total COD, Pending Tracking
+--
+-- 10. Date Filtering:
+--     - Most dashboards use date_order for filtering
+--     - Default range: Current month (start to end)
+--     - Top 10 leaderboard fetches ALL orders (not filtered by marketer)

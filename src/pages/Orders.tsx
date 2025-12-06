@@ -52,7 +52,7 @@ const Orders: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState<{ id: string; trackingNo: string; platform: string } | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<{ id: string; trackingNo: string; platform: string; receiptImageUrl?: string; waybillUrl?: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Regenerate tracking state
@@ -144,7 +144,9 @@ const Orders: React.FC = () => {
     setOrderToDelete({
       id: order.id,
       trackingNo: order.noTracking,
-      platform: order.jenisPlatform
+      platform: order.jenisPlatform,
+      receiptImageUrl: order.receiptImageUrl,
+      waybillUrl: order.waybillUrl,
     });
     setDeleteDialogOpen(true);
   };
@@ -241,11 +243,11 @@ const Orders: React.FC = () => {
 
   const handleConfirmDelete = async () => {
     if (!orderToDelete) return;
-    
+
     setIsDeleting(true);
     try {
       const isNinjavanOrder = orderToDelete.platform !== 'Shopee' && orderToDelete.platform !== 'Tiktok';
-      
+
       // If it's a Ninjavan order and has tracking number, cancel via API first
       if (isNinjavanOrder && orderToDelete.trackingNo) {
         try {
@@ -278,14 +280,40 @@ const Orders: React.FC = () => {
         }
       }
 
+      // Delete images from Vercel Blob storage if they exist
+      const deleteFromBlob = async (url: string) => {
+        try {
+          const response = await fetch('/api/delete-blob', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
+          if (!response.ok) {
+            console.error('Failed to delete from Blob:', url);
+          }
+        } catch (err) {
+          console.error('Blob delete error:', err);
+        }
+      };
+
+      // Delete receipt image if exists
+      if (orderToDelete.receiptImageUrl) {
+        await deleteFromBlob(orderToDelete.receiptImageUrl);
+      }
+
+      // Delete waybill if exists
+      if (orderToDelete.waybillUrl) {
+        await deleteFromBlob(orderToDelete.waybillUrl);
+      }
+
       // Delete the order from database
       await deleteOrder(orderToDelete.id);
-      
+
       toast({
         title: 'Order Dipadam',
-        description: 'Order telah berjaya dipadam.',
+        description: 'Order dan fail berkaitan telah berjaya dipadam.',
       });
-      
+
       await refreshData();
     } catch (error) {
       console.error('Error deleting order:', error);

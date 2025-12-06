@@ -25,6 +25,7 @@ import { NEGERI_OPTIONS } from '@/types';
 import { ArrowLeft, Save, Loader2, CalendarIcon, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
 const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC', 'REPEAT'];
@@ -106,11 +107,15 @@ const OrderForm: React.FC = () => {
         produk: editOrder.produk || '',
         hargaJualan: editOrder.hargaJualanSebenar || 0,
         caraBayaran: editOrder.caraBayaran || '',
-        jenisBayaran: '',
-        pilihBank: '',
+        jenisBayaran: editOrder.jenisBayaran || '',
+        pilihBank: editOrder.bank || '',
         nota: editOrder.notaStaff || '',
         trackingNumber: editOrder.noTracking || '',
       });
+      // Set tarikh bayaran if exists
+      if (editOrder.tarikhBayaran) {
+        setTarikhBayaran(new Date(editOrder.tarikhBayaran));
+      }
     }
   }, [editOrder]);
 
@@ -403,6 +408,73 @@ const OrderForm: React.FC = () => {
           }
         }
 
+        // Helper function to delete from Vercel Blob
+        const deleteFromBlob = async (url: string) => {
+          try {
+            const response = await fetch('/api/delete-blob', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url }),
+            });
+            if (!response.ok) {
+              console.error('Failed to delete from Blob:', url);
+            }
+          } catch (err) {
+            console.error('Blob delete error:', err);
+          }
+        };
+
+        // Helper function to upload to Vercel Blob (client-side)
+        const uploadToVercelBlob = async (file: File, folder: string): Promise<string> => {
+          const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN;
+          if (!token) {
+            throw new Error('Blob storage token not configured');
+          }
+          const timestamp = Date.now();
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-');
+          const filename = `${folder}/${timestamp}-${cleanFileName}`;
+          const blob = await put(filename, file, { access: 'public', token });
+          return blob.url;
+        };
+
+        // Handle receipt image upload/replacement for edit mode
+        let newReceiptUrl = editOrder.receiptImageUrl || '';
+        if (receiptFile && showPaymentDetails) {
+          // Delete old receipt if exists
+          if (editOrder.receiptImageUrl) {
+            await deleteFromBlob(editOrder.receiptImageUrl);
+          }
+          try {
+            newReceiptUrl = await uploadToVercelBlob(receiptFile, 'receipts');
+          } catch (uploadError) {
+            console.error('Receipt upload error:', uploadError);
+            toast({
+              title: 'Amaran',
+              description: 'Gagal memuat naik resit baru.',
+              variant: 'destructive',
+            });
+          }
+        }
+
+        // Handle waybill upload/replacement for edit mode (Shopee/Tiktok)
+        let newWaybillUrl = editOrder.waybillUrl || '';
+        if (waybillFile && isShopeeOrTiktokOrder) {
+          // Delete old waybill if exists
+          if (editOrder.waybillUrl) {
+            await deleteFromBlob(editOrder.waybillUrl);
+          }
+          try {
+            newWaybillUrl = await uploadToVercelBlob(waybillFile, 'waybills');
+          } catch (uploadError) {
+            console.error('Waybill upload error:', uploadError);
+            toast({
+              title: 'Amaran',
+              description: 'Gagal memuat naik waybill baru.',
+              variant: 'destructive',
+            });
+          }
+        }
+
         // Update existing order in database
         const { error: updateError } = await supabase
           .from('customer_orders')
@@ -424,6 +496,12 @@ const OrderForm: React.FC = () => {
             jenis_customer: formData.jenisCustomer,
             cara_bayaran: formData.caraBayaran,
             nota_staff: formData.nota,
+            // Payment details
+            tarikh_bayaran: showPaymentDetails && tarikhBayaran ? format(tarikhBayaran, 'yyyy-MM-dd') : null,
+            jenis_bayaran: showPaymentDetails ? formData.jenisBayaran : null,
+            bank: showPaymentDetails ? formData.pilihBank : null,
+            receipt_image_url: newReceiptUrl || null,
+            waybill_url: newWaybillUrl || null,
           })
           .eq('id', editOrder.id);
 
@@ -488,23 +566,24 @@ const OrderForm: React.FC = () => {
           }
         }
 
-        // Helper function to upload to Vercel Blob
+        // Helper function to upload to Vercel Blob (client-side)
         const uploadToVercelBlob = async (file: File, folder: string): Promise<string> => {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('folder', folder);
-
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error('Upload failed');
+          const token = import.meta.env.VITE_BLOB_READ_WRITE_TOKEN;
+          if (!token) {
+            throw new Error('Blob storage token not configured');
           }
 
-          const data = await response.json();
-          return data.url;
+          // Create clean filename
+          const timestamp = Date.now();
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '-');
+          const filename = `${folder}/${timestamp}-${cleanFileName}`;
+
+          const blob = await put(filename, file, {
+            access: 'public',
+            token,
+          });
+
+          return blob.url;
         };
 
         // Upload receipt image if provided

@@ -43,77 +43,97 @@ serve(async (req) => {
       );
     }
 
-    // Check for valid token or get new one
-    let accessToken: string;
-    const now = new Date();
+    // Always get a fresh token for waybill (don't use cached token)
+    // Waybill API requires specific scopes that may differ from order creation
+    console.log('Requesting fresh token from Ninjavan for waybill access');
 
-    const { data: tokenData } = await supabase
-      .from('ninjavan_tokens')
-      .select('*')
-      .gt('expires_at', now.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const authResponse = await fetch('https://api.ninjavan.co/my/2.0/oauth/access_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: config.client_id,
+        client_secret: config.client_secret,
+        grant_type: 'client_credentials'
+      })
+    });
 
-    if (tokenData && tokenData.access_token) {
-      accessToken = tokenData.access_token;
-      console.log('Using existing valid token');
-    } else {
-      // Get new token
-      console.log('Requesting new token from Ninjavan');
-
-      const authResponse = await fetch('https://api.ninjavan.co/my/2.0/oauth/access_token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: config.client_id,
-          client_secret: config.client_secret,
-          grant_type: 'client_credentials'
-        })
-      });
-
-      if (!authResponse.ok) {
-        const errorText = await authResponse.text();
-        console.error('Ninjavan Auth failed:', errorText);
-        return new Response(
-          JSON.stringify({ error: 'Failed to authenticate with Ninjavan API' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const authData = await authResponse.json();
-      accessToken = authData.access_token;
-      const expiresIn = authData.expires_in || 3600;
-      const expiresAt = new Date(now.getTime() + ((expiresIn - 300) * 1000));
-
-      // Store new token
-      await supabase.from('ninjavan_tokens').insert({
-        access_token: accessToken,
-        expires_at: expiresAt.toISOString()
-      });
+    if (!authResponse.ok) {
+      const errorText = await authResponse.text();
+      console.error('Ninjavan Auth failed:', errorText);
+      return new Response(
+        JSON.stringify({ error: 'Failed to authenticate with Ninjavan API', details: errorText }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const authData = await authResponse.json();
+    const accessToken = authData.access_token;
+    console.log('Token obtained successfully, scopes:', authData.scope || 'not provided');
 
     // Join tracking numbers with comma for Ninjavan API
     const tids = trackingNumbers.join(',');
-    const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${tids}&h=0`;
 
-    console.log('Fetching waybill from:', waybillUrl);
+    // Try different waybill endpoints
+    // Option 1: Reports waybill endpoint (v2.0)
+    let waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${tids}&h=0`;
+    console.log('Attempting waybill fetch from:', waybillUrl);
 
-    // Fetch waybill PDF from Ninjavan
-    const waybillResponse = await fetch(waybillUrl, {
+    let waybillResponse = await fetch(waybillUrl, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/pdf',
         'Authorization': `Bearer ${accessToken}`
       }
     });
 
+    // If v2.0 fails, try v4.1 endpoint
+    if (!waybillResponse.ok) {
+      const errorText1 = await waybillResponse.text();
+      console.log('V2.0 endpoint failed:', errorText1);
+
+      // Option 2: Try v4.1 waybill endpoint
+      waybillUrl = `https://api.ninjavan.co/my/4.1/orders/waybill?tids=${tids}`;
+      console.log('Trying v4.1 endpoint:', waybillUrl);
+
+      waybillResponse = await fetch(waybillUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+    }
+
+    // If still fails, try individual order waybill
+    if (!waybillResponse.ok) {
+      const errorText2 = await waybillResponse.text();
+      console.log('V4.1 endpoint failed:', errorText2);
+
+      // Option 3: Try getting waybill for first tracking number only
+      const firstTid = trackingNumbers[0];
+      waybillUrl = `https://api.ninjavan.co/my/4.1/orders/${firstTid}/waybill`;
+      console.log('Trying individual order endpoint:', waybillUrl);
+
+      waybillResponse = await fetch(waybillUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+    }
+
     if (!waybillResponse.ok) {
       const errorText = await waybillResponse.text();
-      console.error('Waybill fetch failed:', errorText);
+      console.error('All waybill endpoints failed:', errorText);
+
+      // Return helpful error message
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch waybill from Ninjavan', details: errorText }),
+        JSON.stringify({
+          error: 'Waybill access denied. Your Ninjavan API credentials may not have waybill permissions.',
+          details: errorText,
+          suggestion: 'Please contact Ninjavan to enable waybill/AWB scope (CORE_GET_AWB) for your API credentials.'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

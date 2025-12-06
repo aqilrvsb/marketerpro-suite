@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2, RotateCcw, ClipboardList, Save } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2, RotateCcw, ClipboardList, Save, Wallet } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { STATUS_OPTIONS, KURIER_OPTIONS } from '@/types';
 import { toast } from '@/hooks/use-toast';

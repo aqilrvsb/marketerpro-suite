@@ -4,7 +4,11 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nImplement custom Staff ID authentication system\n\n- Replace Supabase Auth with custom auth using Staff ID login\n- Add login_user and register_user database functions\n- Update AuthContext for localStorage session management\n- Password = Staff ID (case-insensitive)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

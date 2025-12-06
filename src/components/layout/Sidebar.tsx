@@ -19,6 +19,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Wallet,
+  Trophy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +65,12 @@ const navItems: NavItem[] = [
     label: 'Reporting Spend',
     path: '/dashboard/reporting-spend',
     icon: <BarChart3 className="w-5 h-5" />,
+    roles: ['marketer', 'admin', 'bod'],
+  },
+  {
+    label: 'Top 10',
+    path: '/dashboard/top10',
+    icon: <Trophy className="w-5 h-5" />,
     roles: ['marketer', 'admin', 'bod'],
   },
   {

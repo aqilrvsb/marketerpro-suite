@@ -21,6 +21,7 @@ import Finance from "./pages/Finance";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NinjavanSettings from "./pages/NinjavanSettings";
+import Top10 from "./pages/Top10";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,7 @@ const App = () => (
                   <Route path="prospects" element={<Prospects />} />
                   <Route path="spend" element={<Spend />} />
                   <Route path="reporting-spend" element={<ReportingSpend />} />
+                  <Route path="top10" element={<Top10 />} />
                   <Route path="logistics" element={<Logistics />} />
                   <Route path="logistics/order" element={<Logistics />} />
                   <Route path="logistics/shipment" element={<Logistics />} />

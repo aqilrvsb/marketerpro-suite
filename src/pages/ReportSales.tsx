@@ -47,6 +47,9 @@ interface MarketerStats {
   salesNP: number;
   salesEP: number;
   salesEC: number;
+  countNP: number;
+  countEP: number;
+  countEC: number;
   totalLead: number;
   averageKPK: number;
   closingRate: number;
@@ -171,6 +174,9 @@ const ReportSales: React.FC = () => {
           salesNP: 0,
           salesEP: 0,
           salesEC: 0,
+          countNP: 0,
+          countEP: 0,
+          countEC: 0,
           totalLead: 0,
           averageKPK: 0,
           closingRate: 0,
@@ -198,14 +204,17 @@ const ReportSales: React.FC = () => {
         stats[idStaff].salesGoogle += saleAmount;
       }
 
-      // Count by customer type
+      // Count by customer type (sales amount + customer count)
       const customerType = order.jenis_customer?.toUpperCase();
       if (customerType === 'NP') {
         stats[idStaff].salesNP += saleAmount;
+        stats[idStaff].countNP += 1;
       } else if (customerType === 'EP') {
         stats[idStaff].salesEP += saleAmount;
+        stats[idStaff].countEP += 1;
       } else if (customerType === 'EC') {
         stats[idStaff].salesEC += saleAmount;
+        stats[idStaff].countEC += 1;
       }
     });
 
@@ -275,6 +284,9 @@ const ReportSales: React.FC = () => {
         salesNP: acc.salesNP + stat.salesNP,
         salesEP: acc.salesEP + stat.salesEP,
         salesEC: acc.salesEC + stat.salesEC,
+        countNP: acc.countNP + stat.countNP,
+        countEP: acc.countEP + stat.countEP,
+        countEC: acc.countEC + stat.countEC,
         totalLead: acc.totalLead + stat.totalLead,
       }),
       {
@@ -289,6 +301,9 @@ const ReportSales: React.FC = () => {
         salesNP: 0,
         salesEP: 0,
         salesEC: 0,
+        countNP: 0,
+        countEP: 0,
+        countEC: 0,
         totalLead: 0,
       }
     );
@@ -373,88 +388,106 @@ const ReportSales: React.FC = () => {
           Sales Report by Marketer
         </h2>
 
-        <div className="overflow-x-auto">
-          <table className="data-table">
-            <thead>
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="w-full min-w-[1800px] border-collapse">
+            <thead className="bg-muted">
               <tr>
-                <th className="sticky left-0 bg-muted z-10">ID STAFF</th>
-                <th>NAME</th>
-                <th className="text-right">TOTAL SALES</th>
-                <th className="text-right">RETURN</th>
-                <th className="text-right">RETURN %</th>
-                <th className="text-right">SPEND</th>
-                <th className="text-right">ROAS</th>
-                <th className="text-right">SALES FB</th>
-                <th className="text-right">SALES DB</th>
-                <th className="text-right">SALES SHOPEE</th>
-                <th className="text-right">SALES TIKTOK</th>
-                <th className="text-right">SALES GOOGLE</th>
-                <th className="text-right">SALES NP</th>
-                <th className="text-right">SALES EP</th>
-                <th className="text-right">SALES EC</th>
-                <th className="text-right">TOTAL LEAD</th>
-                <th className="text-right">AVG KPK</th>
-                <th className="text-right">CLOSING %</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">ID STAFF</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[150px]">NAME</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">TOTAL SALES</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">RETURN</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[90px]">RETURN %</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">SPEND</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[80px]">ROAS</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">SALES FB</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">SALES DB</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES SHOPEE</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES TIKTOK</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES GOOGLE</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES NP</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES EP</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">SALES EC</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">TOTAL LEAD</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">AVG KPK</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">CLOSING %</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-background divide-y divide-border">
               {filteredStats.map((stat) => (
-                <tr key={stat.idStaff}>
-                  <td className="sticky left-0 bg-background z-10 font-medium">{stat.idStaff}</td>
-                  <td>{stat.name}</td>
-                  <td className="text-right font-semibold text-success">{formatNumber(stat.totalSales)}</td>
-                  <td className="text-right text-destructive">{formatNumber(stat.totalReturn)}</td>
-                  <td className="text-right text-destructive">{formatPercent(stat.returnPercent)}</td>
-                  <td className="text-right text-warning">{formatNumber(stat.totalSpend)}</td>
-                  <td className="text-right text-primary font-medium">{stat.roas.toFixed(2)}x</td>
-                  <td className="text-right text-blue-600">{formatNumber(stat.salesFB)}</td>
-                  <td className="text-right text-purple-600">{formatNumber(stat.salesDatabase)}</td>
-                  <td className="text-right text-orange-600">{formatNumber(stat.salesShopee)}</td>
-                  <td className="text-right text-pink-600">{formatNumber(stat.salesTiktok)}</td>
-                  <td className="text-right text-red-600">{formatNumber(stat.salesGoogle)}</td>
-                  <td className="text-right text-cyan-600">{formatNumber(stat.salesNP)}</td>
-                  <td className="text-right text-amber-600">{formatNumber(stat.salesEP)}</td>
-                  <td className="text-right text-emerald-600">{formatNumber(stat.salesEC)}</td>
-                  <td className="text-right">{stat.totalLead}</td>
-                  <td className="text-right">{formatNumber(stat.averageKPK)}</td>
-                  <td className="text-right font-medium">{formatPercent(stat.closingRate)}</td>
+                <tr key={stat.idStaff} className="hover:bg-muted/50 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">{stat.idStaff}</td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">{stat.name}</td>
+                  <td className="px-4 py-3 text-sm text-right font-semibold text-success whitespace-nowrap">{formatNumber(stat.totalSales)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatNumber(stat.totalReturn)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatPercent(stat.returnPercent)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-warning whitespace-nowrap">{formatNumber(stat.totalSpend)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-primary font-medium whitespace-nowrap">{stat.roas.toFixed(2)}x</td>
+                  <td className="px-4 py-3 text-sm text-right text-blue-600 whitespace-nowrap">{formatNumber(stat.salesFB)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-purple-600 whitespace-nowrap">{formatNumber(stat.salesDatabase)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-orange-600 whitespace-nowrap">{formatNumber(stat.salesShopee)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-pink-600 whitespace-nowrap">{formatNumber(stat.salesTiktok)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-red-600 whitespace-nowrap">{formatNumber(stat.salesGoogle)}</td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-cyan-600 font-medium">{formatNumber(stat.salesNP)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({stat.countNP})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-amber-600 font-medium">{formatNumber(stat.salesEP)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({stat.countEP})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-emerald-600 font-medium">{formatNumber(stat.salesEC)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({stat.countEC})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">{stat.totalLead}</td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">{formatNumber(stat.averageKPK)}</td>
+                  <td className="px-4 py-3 text-sm text-right font-medium whitespace-nowrap">{formatPercent(stat.closingRate)}</td>
                 </tr>
               ))}
               {filteredStats.length === 0 && (
                 <tr>
-                  <td colSpan={18} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={18} className="px-4 py-8 text-center text-muted-foreground">
                     No marketers found for the selected date range
                   </td>
                 </tr>
               )}
             </tbody>
             {filteredStats.length > 0 && (
-              <tfoot>
-                <tr className="bg-muted/50 font-semibold">
-                  <td className="sticky left-0 bg-muted/50 z-10">TOTAL</td>
-                  <td>{filteredStats.length} marketers</td>
-                  <td className="text-right text-success">{formatNumber(totals.totalSales)}</td>
-                  <td className="text-right text-destructive">{formatNumber(totals.totalReturn)}</td>
-                  <td className="text-right text-destructive">
+              <tfoot className="bg-muted/70">
+                <tr className="font-semibold">
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">TOTAL</td>
+                  <td className="px-4 py-3 text-sm whitespace-nowrap">{filteredStats.length} marketers</td>
+                  <td className="px-4 py-3 text-sm text-right text-success whitespace-nowrap">{formatNumber(totals.totalSales)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatNumber(totals.totalReturn)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">
                     {formatPercent(totals.totalSales > 0 ? (totals.totalReturn / totals.totalSales) * 100 : 0)}
                   </td>
-                  <td className="text-right text-warning">{formatNumber(totals.totalSpend)}</td>
-                  <td className="text-right text-primary">
+                  <td className="px-4 py-3 text-sm text-right text-warning whitespace-nowrap">{formatNumber(totals.totalSpend)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-primary whitespace-nowrap">
                     {(totals.totalSpend > 0 ? totals.totalSales / totals.totalSpend : 0).toFixed(2)}x
                   </td>
-                  <td className="text-right text-blue-600">{formatNumber(totals.salesFB)}</td>
-                  <td className="text-right text-purple-600">{formatNumber(totals.salesDatabase)}</td>
-                  <td className="text-right text-orange-600">{formatNumber(totals.salesShopee)}</td>
-                  <td className="text-right text-pink-600">{formatNumber(totals.salesTiktok)}</td>
-                  <td className="text-right text-red-600">{formatNumber(totals.salesGoogle)}</td>
-                  <td className="text-right text-cyan-600">{formatNumber(totals.salesNP)}</td>
-                  <td className="text-right text-amber-600">{formatNumber(totals.salesEP)}</td>
-                  <td className="text-right text-emerald-600">{formatNumber(totals.salesEC)}</td>
-                  <td className="text-right">{totals.totalLead}</td>
-                  <td className="text-right">
+                  <td className="px-4 py-3 text-sm text-right text-blue-600 whitespace-nowrap">{formatNumber(totals.salesFB)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-purple-600 whitespace-nowrap">{formatNumber(totals.salesDatabase)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-orange-600 whitespace-nowrap">{formatNumber(totals.salesShopee)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-pink-600 whitespace-nowrap">{formatNumber(totals.salesTiktok)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-red-600 whitespace-nowrap">{formatNumber(totals.salesGoogle)}</td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-cyan-600">{formatNumber(totals.salesNP)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({totals.countNP})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-amber-600">{formatNumber(totals.salesEP)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({totals.countEP})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
+                    <span className="text-emerald-600">{formatNumber(totals.salesEC)}</span>
+                    <span className="text-muted-foreground text-xs ml-1">({totals.countEC})</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">{totals.totalLead}</td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">
                     {formatNumber(totals.totalLead > 0 ? totals.totalSpend / totals.totalLead : 0)}
                   </td>
-                  <td className="text-right">-</td>
+                  <td className="px-4 py-3 text-sm text-right whitespace-nowrap">-</td>
                 </tr>
               </tfoot>
             )}

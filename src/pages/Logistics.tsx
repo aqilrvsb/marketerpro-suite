@@ -82,12 +82,37 @@ const Logistics: React.FC = () => {
     const isPending = order.deliveryStatus === 'Pending';
     if (!isPending) return false;
 
-    const matchesSearch =
-      order.marketerName.toLowerCase().includes(search.toLowerCase()) ||
-      order.noPhone.toLowerCase().includes(search.toLowerCase()) ||
-      order.alamat.toLowerCase().includes(search.toLowerCase()) ||
-      (order.caraBayaran && order.caraBayaran.toLowerCase().includes(search.toLowerCase())) ||
-      (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(search.toLowerCase()));
+    // Advanced search with + for combining filters (e.g., "CASH+Facebook")
+    let matchesSearch = true;
+    if (search.trim()) {
+      const searchTerms = search.toLowerCase().split('+').map(s => s.trim()).filter(Boolean);
+
+      if (searchTerms.length > 1) {
+        // Multiple terms with + means ALL must match (AND logic)
+        matchesSearch = searchTerms.every(term => {
+          return (
+            order.marketerName.toLowerCase().includes(term) ||
+            order.noPhone.toLowerCase().includes(term) ||
+            order.alamat.toLowerCase().includes(term) ||
+            (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+            (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+            (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+            (order.produk && order.produk.toLowerCase().includes(term))
+          );
+        });
+      } else {
+        // Single term - normal search (OR logic)
+        const term = searchTerms[0] || '';
+        matchesSearch =
+          order.marketerName.toLowerCase().includes(term) ||
+          order.noPhone.toLowerCase().includes(term) ||
+          order.alamat.toLowerCase().includes(term) ||
+          (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+          (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+          (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+          (order.produk && order.produk.toLowerCase().includes(term));
+      }
+    }
 
     // Platform filter
     const matchesPlatform = platformFilter === 'All' || order.jenisPlatform === platformFilter;
@@ -404,7 +429,7 @@ const Logistics: React.FC = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, phone, address, platform, or payment..."
+                  placeholder="Search... (use + to combine, e.g. CASH+Facebook)"
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); handleFilterChange(); }}
                   className="pl-10"

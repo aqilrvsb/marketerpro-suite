@@ -20,6 +20,7 @@ import {
   ArrowUpFromLine,
   Wallet,
   Trophy,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -217,16 +218,28 @@ const Sidebar: React.FC = () => {
           collapsed && "justify-center px-0"
         )}>
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary flex-shrink-0">
-            {profile?.fullName?.charAt(0) || 'U'}
+            {profile?.idstaff?.charAt(0) || 'U'}
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
-                {profile?.fullName || 'User'}
+                {profile?.idstaff || 'User'}
               </p>
             </div>
           )}
         </div>
+        <Link
+          to="/dashboard/profile"
+          title={collapsed ? "Profile" : undefined}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200",
+            isItemActive('/dashboard/profile') && 'bg-primary text-primary-foreground font-medium hover:bg-primary hover:text-primary-foreground',
+            collapsed && "justify-center px-2"
+          )}
+        >
+          <UserCircle className="w-5 h-5" />
+          {!collapsed && <span className="text-sm">Profile</span>}
+        </Link>
         <button
           onClick={handleLogout}
           title={collapsed ? "Logout" : undefined}

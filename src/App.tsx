@@ -22,6 +22,7 @@ import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NinjavanSettings from "./pages/NinjavanSettings";
 import Top10 from "./pages/Top10";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
                   <Route path="finance" element={<Finance />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<Profile />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

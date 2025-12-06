@@ -28,8 +28,8 @@ interface DeviceSetting {
   created_at: string;
 }
 
-const WHACENTER_API_URL = 'https://api.whacenter.com/api';
-const DEFAULT_WHACENTER_API_KEY = 'd44ac50f-0bd8-4ed0-b85f-55465e08d7cf';
+// Use proxy endpoint to avoid CORS issues
+const WHACENTER_PROXY_URL = '/api/whacenter';
 
 const Profile: React.FC = () => {
   const { profile } = useAuth();
@@ -112,13 +112,12 @@ const Profile: React.FC = () => {
       const webhookId = generateWebhookId();
       const idDevice = `DFR_${profile.idstaff}`;
 
-      // Create device in database using default API key
+      // Create device in database
       const { data: newDevice, error } = await (supabase as any)
         .from('device_setting')
         .insert({
           user_id: profile.id,
           provider: 'whacenter',
-          api_key: DEFAULT_WHACENTER_API_KEY,
           id_device: idDevice,
           phone_number: deviceForm.phoneNumber,
           webhook_id: webhookId,
@@ -156,20 +155,18 @@ const Profile: React.FC = () => {
       return;
     }
 
-    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
-
     setIsGeneratingDevice(true);
     try {
-      // Step 1: Add device to Whacenter
-      const addDeviceUrl = `${WHACENTER_API_URL}/addDevice?api_key=${apiKey}&name=${device.id_device}&number=${device.phone_number}`;
+      // Step 1: Add device to Whacenter via proxy
+      const addDeviceUrl = `${WHACENTER_PROXY_URL}?endpoint=addDevice&name=${encodeURIComponent(device.id_device || '')}&number=${encodeURIComponent(device.phone_number || '')}`;
       const addResponse = await fetch(addDeviceUrl);
       const addResult = await addResponse.json();
 
-      if (!addResult.status) {
-        throw new Error(addResult.message || 'Gagal menambah device ke Whacenter');
+      if (!addResult.success && !addResult.status) {
+        throw new Error(addResult.message || addResult.error || 'Gagal menambah device ke Whacenter');
       }
 
-      const instanceId = addResult.data?.device_id || addResult.device_id;
+      const instanceId = addResult.data?.device?.device_id || addResult.data?.device_id || addResult.device_id;
 
       // Step 2: Update device with instance ID
       const { error: updateError } = await (supabase as any)
@@ -212,12 +209,11 @@ const Profile: React.FC = () => {
       return;
     }
 
-    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
-
     setIsCheckingStatus(true);
     setQrCode(null);
     try {
-      const statusUrl = `${WHACENTER_API_URL}/getStatus?api_key=${apiKey}&device_id=${device.instance}`;
+      // Use proxy endpoint
+      const statusUrl = `${WHACENTER_PROXY_URL}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`;
       const response = await fetch(statusUrl);
       const result = await response.json();
 
@@ -270,18 +266,21 @@ const Profile: React.FC = () => {
       return;
     }
 
-    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
-
     setIsCheckingStatus(true);
     try {
-      const qrUrl = `${WHACENTER_API_URL}/getQr?api_key=${apiKey}&device_id=${device.instance}`;
+      // Use proxy endpoint for QR
+      const qrUrl = `${WHACENTER_PROXY_URL}?endpoint=qr&device_id=${encodeURIComponent(device.instance)}`;
       const response = await fetch(qrUrl);
       const result = await response.json();
 
-      if (result.data?.qr || result.qr) {
+      // Handle base64 image from proxy
+      if (result.success && result.data?.image) {
+        setQrCode(`data:image/png;base64,${result.data.image}`);
+        setShowQrModal(true);
+      } else if (result.data?.qr || result.qr) {
         setQrCode(result.data?.qr || result.qr);
         setShowQrModal(true);
-      } else if (result.data?.status === 'connected') {
+      } else if (result.data?.status === 'connected' || result.status === 'CONNECTED') {
         toast({
           title: 'Connected',
           description: 'WhatsApp sudah disambung!',
@@ -316,6 +315,17 @@ const Profile: React.FC = () => {
     if (!confirm('Adakah anda pasti mahu padam device ini?')) return;
 
     try {
+      // Delete from Whacenter if instance exists
+      if (device.instance) {
+        try {
+          const deleteUrl = `${WHACENTER_PROXY_URL}?endpoint=deleteDevice&device_id=${encodeURIComponent(device.instance)}`;
+          await fetch(deleteUrl);
+        } catch (err) {
+          console.warn('Failed to delete from Whacenter:', err);
+        }
+      }
+
+      // Delete from database
       const { error } = await (supabase as any)
         .from('device_setting')
         .delete()

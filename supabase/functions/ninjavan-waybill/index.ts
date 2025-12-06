@@ -72,67 +72,63 @@ serve(async (req) => {
 
     // Join tracking numbers with comma for Ninjavan API
     const tids = trackingNumbers.join(',');
+    console.log('Tracking numbers to fetch:', tids);
 
-    // Try different waybill endpoints
-    // Option 1: Reports waybill endpoint (v2.0)
-    let waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${tids}&h=0`;
-    console.log('Attempting waybill fetch from:', waybillUrl);
+    // Try the reports/waybill endpoint which is the standard for bulk waybill download
+    // Based on PHP example: https://api.ninjavan.co/my/2.0/reports/waybill?tids=$track&h=0
+    const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${encodeURIComponent(tids)}&h=0`;
+    console.log('Fetching waybill from:', waybillUrl);
 
-    let waybillResponse = await fetch(waybillUrl, {
+    const waybillResponse = await fetch(waybillUrl, {
       method: 'GET',
       headers: {
+        'Content-Type': 'application/json',
         'Accept': 'application/pdf',
         'Authorization': `Bearer ${accessToken}`
       }
     });
 
-    // If v2.0 fails, try v4.1 endpoint
-    if (!waybillResponse.ok) {
-      const errorText1 = await waybillResponse.text();
-      console.log('V2.0 endpoint failed:', errorText1);
-
-      // Option 2: Try v4.1 waybill endpoint
-      waybillUrl = `https://api.ninjavan.co/my/4.1/orders/waybill?tids=${tids}`;
-      console.log('Trying v4.1 endpoint:', waybillUrl);
-
-      waybillResponse = await fetch(waybillUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/pdf',
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-    }
-
-    // If still fails, try individual order waybill
-    if (!waybillResponse.ok) {
-      const errorText2 = await waybillResponse.text();
-      console.log('V4.1 endpoint failed:', errorText2);
-
-      // Option 3: Try getting waybill for first tracking number only
-      const firstTid = trackingNumbers[0];
-      waybillUrl = `https://api.ninjavan.co/my/4.1/orders/${firstTid}/waybill`;
-      console.log('Trying individual order endpoint:', waybillUrl);
-
-      waybillResponse = await fetch(waybillUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/pdf',
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
-    }
+    console.log('Waybill response status:', waybillResponse.status);
+    console.log('Waybill response headers:', JSON.stringify(Object.fromEntries(waybillResponse.headers.entries())));
 
     if (!waybillResponse.ok) {
-      const errorText = await waybillResponse.text();
-      console.error('All waybill endpoints failed:', errorText);
+      const contentType = waybillResponse.headers.get('content-type') || '';
+      let errorDetails: string;
+
+      if (contentType.includes('application/json')) {
+        const errorJson = await waybillResponse.json();
+        errorDetails = JSON.stringify(errorJson);
+      } else {
+        errorDetails = await waybillResponse.text();
+      }
+
+      console.error('Waybill fetch failed:', errorDetails);
 
       // Return helpful error message
       return new Response(
         JSON.stringify({
-          error: 'Waybill access denied. Your Ninjavan API credentials may not have waybill permissions.',
-          details: errorText,
-          suggestion: 'Please contact Ninjavan to enable waybill/AWB scope (CORE_GET_AWB) for your API credentials.'
+          error: 'Failed to fetch waybill from Ninjavan.',
+          status: waybillResponse.status,
+          details: errorDetails,
+          trackingNumbers: trackingNumbers,
+          suggestion: waybillResponse.status === 403
+            ? 'Your Ninjavan API credentials may not have waybill permissions. Contact Ninjavan to enable CORE_GET_AWB scope.'
+            : 'Please verify the tracking numbers are correct and the orders exist in Ninjavan.'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if response is actually PDF
+    const responseContentType = waybillResponse.headers.get('content-type') || '';
+    if (!responseContentType.includes('application/pdf')) {
+      const responseText = await waybillResponse.text();
+      console.error('Response is not PDF:', responseContentType, responseText.substring(0, 500));
+      return new Response(
+        JSON.stringify({
+          error: 'Ninjavan did not return a PDF.',
+          contentType: responseContentType,
+          details: responseText.substring(0, 500)
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

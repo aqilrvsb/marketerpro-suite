@@ -90,12 +90,11 @@ const ReportPembelian: React.FC = () => {
   // Filter orders by date range and search
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Filter by date_order (fallback to tarikh_tempahan)
-      const orderDate = order.date_order || order.tarikh_tempahan;
-      if (!orderDate) return false;
+      // Filter by date_order only
+      if (!order.date_order) return false;
 
       try {
-        const date = parseISO(orderDate);
+        const date = parseISO(order.date_order);
         const withinDateRange = isWithinInterval(date, {
           start: parseISO(startDate),
           end: parseISO(endDate)
@@ -130,7 +129,7 @@ const ReportPembelian: React.FC = () => {
     const headers = ['No', 'Tarikh Order', 'ID Staff', 'Nama Pelanggan', 'Phone', 'Produk', 'Unit', 'Tracking No', 'Total Sales', 'Cara Bayaran', 'Delivery Status', 'Jenis Platform', 'Jenis Customer', 'Negeri', 'Alamat', 'SEO'];
     const rows = filteredOrders.map((order, idx) => [
       idx + 1,
-      order.date_order || order.tarikh_tempahan,
+      order.date_order,
       order.marketer_id_staff,
       order.marketer_name,
       order.no_phone,
@@ -274,7 +273,7 @@ const ReportPembelian: React.FC = () => {
                 filteredOrders.map((order, index) => (
                   <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.date_order || order.tarikh_tempahan}</td>
+                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.date_order}</td>
                     <td className="px-4 py-3 text-sm font-medium text-primary whitespace-nowrap">{order.marketer_id_staff}</td>
                     <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">{order.marketer_name}</td>
                     <td className="px-4 py-3 text-sm font-mono text-foreground whitespace-nowrap">{order.no_phone}</td>

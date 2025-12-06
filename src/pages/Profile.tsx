@@ -112,7 +112,31 @@ const Profile: React.FC = () => {
       const webhookId = generateWebhookId();
       const idDevice = `DFR_${profile.idstaff}`;
 
-      // Create device in database
+      // Step 1: Create device in Whacenter via proxy
+      const addDeviceUrl = `${WHACENTER_PROXY_URL}?endpoint=addDevice&name=${encodeURIComponent(idDevice)}&number=${encodeURIComponent(deviceForm.phoneNumber)}`;
+      const addResponse = await fetch(addDeviceUrl);
+      const addResult = await addResponse.json();
+
+      if (!addResult.success && !addResult.status) {
+        throw new Error(addResult.message || addResult.error || 'Gagal menambah device ke Whacenter');
+      }
+
+      const instanceId = addResult.data?.device?.device_id || addResult.data?.device_id || addResult.device_id;
+
+      if (!instanceId) {
+        throw new Error('Device ID tidak diterima dari Whacenter');
+      }
+
+      // Step 2: Set webhook for the device
+      const webhookUrl = `${window.location.origin}/api/webhook/${webhookId}`;
+      try {
+        const setWebhookUrl = `${WHACENTER_PROXY_URL}?endpoint=setWebhook&device_id=${encodeURIComponent(instanceId)}&webhook=${encodeURIComponent(webhookUrl)}`;
+        await fetch(setWebhookUrl);
+      } catch (webhookErr) {
+        console.warn('Failed to set webhook:', webhookErr);
+      }
+
+      // Step 3: Save to database with instance ID
       const { data: newDevice, error } = await (supabase as any)
         .from('device_setting')
         .insert({
@@ -121,6 +145,8 @@ const Profile: React.FC = () => {
           id_device: idDevice,
           phone_number: deviceForm.phoneNumber,
           webhook_id: webhookId,
+          instance: instanceId,
+          device_id: instanceId,
           status_wa: 'disconnected',
         })
         .select()
@@ -131,67 +157,13 @@ const Profile: React.FC = () => {
       setDevice(newDevice);
       toast({
         title: 'Berjaya',
-        description: 'Device berjaya dicipta. Klik "Generate Device" untuk sambung ke WhatsApp.',
+        description: 'Device berjaya dicipta. Klik "Scan QR" untuk sambung WhatsApp.',
       });
     } catch (error: any) {
       console.error('Create device error:', error);
       toast({
         title: 'Error',
         description: error.message || 'Gagal mencipta device.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsGeneratingDevice(false);
-    }
-  };
-
-  const handleGenerateDevice = async () => {
-    if (!device) {
-      toast({
-        title: 'Error',
-        description: 'Sila cipta device dahulu.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsGeneratingDevice(true);
-    try {
-      // Step 1: Add device to Whacenter via proxy
-      const addDeviceUrl = `${WHACENTER_PROXY_URL}?endpoint=addDevice&name=${encodeURIComponent(device.id_device || '')}&number=${encodeURIComponent(device.phone_number || '')}`;
-      const addResponse = await fetch(addDeviceUrl);
-      const addResult = await addResponse.json();
-
-      if (!addResult.success && !addResult.status) {
-        throw new Error(addResult.message || addResult.error || 'Gagal menambah device ke Whacenter');
-      }
-
-      const instanceId = addResult.data?.device?.device_id || addResult.data?.device_id || addResult.device_id;
-
-      // Step 2: Update device with instance ID
-      const { error: updateError } = await (supabase as any)
-        .from('device_setting')
-        .update({
-          instance: instanceId,
-          device_id: instanceId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', device.id);
-
-      if (updateError) throw updateError;
-
-      // Reload device
-      await loadDevice();
-
-      toast({
-        title: 'Berjaya',
-        description: 'Device berjaya digenerate. Klik "Scan QR" untuk sambung WhatsApp.',
-      });
-    } catch (error: any) {
-      console.error('Generate device error:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Gagal generate device.',
         variant: 'destructive',
       });
     } finally {
@@ -578,48 +550,26 @@ const Profile: React.FC = () => {
               )}
 
               <div className="flex flex-wrap gap-2">
-                {!device.instance ? (
-                  <Button
-                    onClick={handleGenerateDevice}
-                    disabled={isGeneratingDevice}
-                    className="flex-1"
-                  >
-                    {isGeneratingDevice ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Generate Device
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant="outline"
-                      onClick={handleCheckStatus}
-                      disabled={isCheckingStatus}
-                    >
-                      {isCheckingStatus ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                      )}
-                      Refresh Status
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleScanQR}
-                      disabled={isCheckingStatus}
-                    >
-                      <QrCode className="w-4 h-4 mr-2" />
-                      Scan QR
-                    </Button>
-                  </>
-                )}
+                <Button
+                  variant="outline"
+                  onClick={handleCheckStatus}
+                  disabled={isCheckingStatus || !device.instance}
+                >
+                  {isCheckingStatus ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  Refresh Status
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleScanQR}
+                  disabled={isCheckingStatus || !device.instance}
+                >
+                  <QrCode className="w-4 h-4 mr-2" />
+                  Scan QR
+                </Button>
                 <Button
                   variant="destructive"
                   size="icon"

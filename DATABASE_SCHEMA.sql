@@ -63,9 +63,18 @@ CREATE TABLE public.bundles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
   units integer NOT NULL DEFAULT 1,
-  price_normal numeric NOT NULL DEFAULT 0,   -- Normal price (Facebook, Database, Google)
-  price_shopee numeric NOT NULL DEFAULT 0,   -- Shopee platform price
-  price_tiktok numeric NOT NULL DEFAULT 0,   -- TikTok platform price
+  -- Normal prices (Facebook, Database, Google) by customer type
+  price_normal_np numeric NOT NULL DEFAULT 0,   -- Normal price for NP (New Prospect)
+  price_normal_ep numeric NOT NULL DEFAULT 0,   -- Normal price for EP (Existing Prospect)
+  price_normal_ec numeric NOT NULL DEFAULT 0,   -- Normal price for EC (Existing Customer)
+  -- Shopee prices by customer type
+  price_shopee_np numeric NOT NULL DEFAULT 0,   -- Shopee price for NP
+  price_shopee_ep numeric NOT NULL DEFAULT 0,   -- Shopee price for EP
+  price_shopee_ec numeric NOT NULL DEFAULT 0,   -- Shopee price for EC
+  -- TikTok prices by customer type
+  price_tiktok_np numeric NOT NULL DEFAULT 0,   -- TikTok price for NP
+  price_tiktok_ep numeric NOT NULL DEFAULT 0,   -- TikTok price for EP
+  price_tiktok_ec numeric NOT NULL DEFAULT 0,   -- TikTok price for EC
   product_id uuid,                           -- Linked product
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -108,7 +117,7 @@ CREATE TABLE public.customer_orders (
   date_processed date,
   date_return date,                          -- Return date (when delivery_status = 'Return')
   jenis_platform text,                       -- Platform: Facebook, Tiktok, Shopee, Database, Google
-  jenis_customer text,                       -- Customer type: NP, EP, EC, REPEAT
+  jenis_customer text,                       -- Customer type: NP, EP, EC
   cara_bayaran text,                         -- Payment method: CASH, COD
   delivery_status text DEFAULT 'Pending'::text, -- Pending, Shipped, Success, Failed, Return
   -- Payment Details (for CASH payments)

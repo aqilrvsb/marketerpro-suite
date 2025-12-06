@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
-const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC', 'REPEAT'];
+const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC'];
 const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
 const JENIS_BAYARAN_OPTIONS = ['Online Transfer', 'Credit Card', 'CDM', 'CASH'];
 const BANK_OPTIONS = [
@@ -143,21 +143,32 @@ const OrderForm: React.FC = () => {
     return data as string;
   };
 
-  // Get minimum price based on platform and selected bundle
-  const getMinimumPrice = (bundleName: string, platform: string): number => {
+  // Get minimum price based on platform, customer type and selected bundle
+  const getMinimumPrice = (bundleName: string, platform: string, customerType: string): number => {
     const bundle = activeBundles.find(b => b.name === bundleName);
     if (!bundle) return 0;
-    
+
+    // Determine price based on platform and customer type
     if (platform === 'Shopee') {
-      return bundle.priceShopee;
+      if (customerType === 'NP') return bundle.priceShopeeNp;
+      if (customerType === 'EP') return bundle.priceShopeeEp;
+      if (customerType === 'EC') return bundle.priceShopeeEc;
+      return bundle.priceShopeeNp; // Default to NP
     } else if (platform === 'Tiktok') {
-      return bundle.priceTiktok;
+      if (customerType === 'NP') return bundle.priceTiktokNp;
+      if (customerType === 'EP') return bundle.priceTiktokEp;
+      if (customerType === 'EC') return bundle.priceTiktokEc;
+      return bundle.priceTiktokNp; // Default to NP
     } else {
-      return bundle.priceNormal;
+      // Normal price (Facebook, Database, Google)
+      if (customerType === 'NP') return bundle.priceNormalNp;
+      if (customerType === 'EP') return bundle.priceNormalEp;
+      if (customerType === 'EC') return bundle.priceNormalEc;
+      return bundle.priceNormalNp; // Default to NP
     }
   };
 
-  const currentMinPrice = getMinimumPrice(formData.produk, formData.jenisPlatform);
+  const currentMinPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, formData.jenisCustomer);
   const isPriceBelowMinimum = formData.hargaJualan > 0 && formData.hargaJualan < currentMinPrice;
 
   const handleChange = (field: string, value: string | number) => {
@@ -167,23 +178,24 @@ const OrderForm: React.FC = () => {
       if (typeof value === 'string' && !['jenisPlatform', 'jenisCustomer', 'caraBayaran', 'jenisBayaran', 'pilihBank', 'produk', 'negeri'].includes(field)) {
         processedValue = value.toUpperCase();
       }
-      
+
       const newData = { ...prev, [field]: processedValue };
-      
-      // Auto-populate price when product or platform changes (only for new orders)
-      if ((field === 'produk' || field === 'jenisPlatform') && !isEditMode) {
+
+      // Auto-populate price when product, platform, or customer type changes (only for new orders)
+      if ((field === 'produk' || field === 'jenisPlatform' || field === 'jenisCustomer') && !isEditMode) {
         const bundleName = field === 'produk' ? value as string : prev.produk;
         const platform = field === 'jenisPlatform' ? value as string : prev.jenisPlatform;
-        
-        if (bundleName) {
-          const minPrice = getMinimumPrice(bundleName, platform);
-          // Only auto-populate if current price is 0 or if switching products
-          if (field === 'produk' || prev.hargaJualan === 0) {
+        const customerType = field === 'jenisCustomer' ? value as string : prev.jenisCustomer;
+
+        if (bundleName && customerType) {
+          const minPrice = getMinimumPrice(bundleName, platform, customerType);
+          // Auto-populate if current price is 0 or if switching products/customer type
+          if (field === 'produk' || field === 'jenisCustomer' || prev.hargaJualan === 0) {
             newData.hargaJualan = minPrice;
           }
         }
       }
-      
+
       return newData;
     });
   };

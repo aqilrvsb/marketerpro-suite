@@ -9,9 +9,18 @@ export interface Bundle {
   productName: string;
   productSku: string;
   units: number;
-  priceNormal: number;
-  priceShopee: number;
-  priceTiktok: number;
+  // Normal prices (Facebook, Database, Google) by customer type
+  priceNormalNp: number;
+  priceNormalEp: number;
+  priceNormalEc: number;
+  // Shopee prices by customer type
+  priceShopeeNp: number;
+  priceShopeeEp: number;
+  priceShopeeEc: number;
+  // TikTok prices by customer type
+  priceTiktokNp: number;
+  priceTiktokEp: number;
+  priceTiktokEc: number;
   isActive: boolean;
 }
 
@@ -89,9 +98,18 @@ export const BundleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         productName: b.products?.name || '',
         productSku: b.products?.sku || '',
         units: b.units,
-        priceNormal: Number(b.price_normal),
-        priceShopee: Number(b.price_shopee),
-        priceTiktok: Number(b.price_tiktok),
+        // Normal prices by customer type
+        priceNormalNp: Number(b.price_normal_np) || 0,
+        priceNormalEp: Number(b.price_normal_ep) || 0,
+        priceNormalEc: Number(b.price_normal_ec) || 0,
+        // Shopee prices by customer type
+        priceShopeeNp: Number(b.price_shopee_np) || 0,
+        priceShopeeEp: Number(b.price_shopee_ep) || 0,
+        priceShopeeEc: Number(b.price_shopee_ec) || 0,
+        // TikTok prices by customer type
+        priceTiktokNp: Number(b.price_tiktok_np) || 0,
+        priceTiktokEp: Number(b.price_tiktok_ep) || 0,
+        priceTiktokEc: Number(b.price_tiktok_ec) || 0,
         isActive: b.is_active,
       }));
       setBundles(mappedBundles);
@@ -117,9 +135,18 @@ export const BundleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         name: bundle.name,
         product_id: bundle.productId || null,
         units: bundle.units,
-        price_normal: bundle.priceNormal,
-        price_shopee: bundle.priceShopee,
-        price_tiktok: bundle.priceTiktok,
+        // Normal prices by customer type
+        price_normal_np: bundle.priceNormalNp,
+        price_normal_ep: bundle.priceNormalEp,
+        price_normal_ec: bundle.priceNormalEc,
+        // Shopee prices by customer type
+        price_shopee_np: bundle.priceShopeeNp,
+        price_shopee_ep: bundle.priceShopeeEp,
+        price_shopee_ec: bundle.priceShopeeEc,
+        // TikTok prices by customer type
+        price_tiktok_np: bundle.priceTiktokNp,
+        price_tiktok_ep: bundle.priceTiktokEp,
+        price_tiktok_ec: bundle.priceTiktokEc,
         is_active: bundle.isActive,
       });
       if (error) throw error;
@@ -137,9 +164,18 @@ export const BundleProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (bundle.name !== undefined) updateData.name = bundle.name;
       if (bundle.productId !== undefined) updateData.product_id = bundle.productId || null;
       if (bundle.units !== undefined) updateData.units = bundle.units;
-      if (bundle.priceNormal !== undefined) updateData.price_normal = bundle.priceNormal;
-      if (bundle.priceShopee !== undefined) updateData.price_shopee = bundle.priceShopee;
-      if (bundle.priceTiktok !== undefined) updateData.price_tiktok = bundle.priceTiktok;
+      // Normal prices by customer type
+      if (bundle.priceNormalNp !== undefined) updateData.price_normal_np = bundle.priceNormalNp;
+      if (bundle.priceNormalEp !== undefined) updateData.price_normal_ep = bundle.priceNormalEp;
+      if (bundle.priceNormalEc !== undefined) updateData.price_normal_ec = bundle.priceNormalEc;
+      // Shopee prices by customer type
+      if (bundle.priceShopeeNp !== undefined) updateData.price_shopee_np = bundle.priceShopeeNp;
+      if (bundle.priceShopeeEp !== undefined) updateData.price_shopee_ep = bundle.priceShopeeEp;
+      if (bundle.priceShopeeEc !== undefined) updateData.price_shopee_ec = bundle.priceShopeeEc;
+      // TikTok prices by customer type
+      if (bundle.priceTiktokNp !== undefined) updateData.price_tiktok_np = bundle.priceTiktokNp;
+      if (bundle.priceTiktokEp !== undefined) updateData.price_tiktok_ep = bundle.priceTiktokEp;
+      if (bundle.priceTiktokEc !== undefined) updateData.price_tiktok_ec = bundle.priceTiktokEc;
       if (bundle.isActive !== undefined) updateData.is_active = bundle.isActive;
       updateData.updated_at = new Date().toISOString();
 

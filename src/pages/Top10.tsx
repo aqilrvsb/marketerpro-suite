@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Trophy, Medal, Award, Calendar, Search, TrendingUp, Users, DollarSign, Loader2 } from 'lucide-react';
+import { Trophy, Medal, Award, Calendar, Search, Loader2 } from 'lucide-react';
 import { useData } from '@/context/DataContext';
 import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 
@@ -171,44 +171,6 @@ const Top10: React.FC = () => {
               />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="stat-card">
-          <div className="stat-label text-muted-foreground">
-            <Users className="w-4 h-4" />
-            <span>TOTAL MARKETERS</span>
-          </div>
-          <p className="stat-value text-foreground">{marketerStats.length}</p>
-        </div>
-        <div className="stat-card border-l-4 border-l-primary">
-          <div className="stat-label text-primary">
-            <DollarSign className="w-4 h-4" />
-            <span>TOTAL SALES</span>
-          </div>
-          <p className="stat-value text-primary">
-            RM {formatNumber(marketerStats.reduce((sum, s) => sum + s.totalSales, 0))}
-          </p>
-        </div>
-        <div className="stat-card border-l-4 border-l-success">
-          <div className="stat-label text-success">
-            <TrendingUp className="w-4 h-4" />
-            <span>TOP SALES</span>
-          </div>
-          <p className="stat-value text-success">
-            RM {formatNumber(top3[0]?.totalSales || 0)}
-          </p>
-        </div>
-        <div className="stat-card-highlight">
-          <div className="stat-label text-white/80">
-            <Trophy className="w-4 h-4" />
-            <span>TOP PERFORMER</span>
-          </div>
-          <p className="stat-value text-white text-lg truncate">
-            {top3[0]?.name || '-'}
-          </p>
         </div>
       </div>
 

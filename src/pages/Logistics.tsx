@@ -429,6 +429,7 @@ const Logistics: React.FC = () => {
     totalReturn: returnOrders.length,
     cashReturn: returnOrders.filter((o) => o.caraBayaran === 'CASH').length,
     codReturn: returnOrders.filter((o) => o.caraBayaran === 'COD').length,
+    totalSalesReturn: returnOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
   };
 
   // Pending Tracking tab counts (COD only)
@@ -1773,7 +1774,7 @@ const Logistics: React.FC = () => {
           <h2 className="text-xl font-semibold text-foreground">Return Management</h2>
 
           {/* Return Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="stat-card flex items-center gap-3">
               <RotateCcw className="w-5 h-5 text-destructive" />
               <div>
@@ -1793,6 +1794,13 @@ const Logistics: React.FC = () => {
               <div>
                 <p className="text-2xl font-bold text-foreground">{returnCounts.codReturn}</p>
                 <p className="text-sm text-muted-foreground">Total COD Return</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Wallet className="w-5 h-5 text-warning" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">RM {returnCounts.totalSalesReturn.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-sm text-muted-foreground">Total Sales Return</p>
               </div>
             </div>
           </div>

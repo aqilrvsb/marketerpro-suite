@@ -1,0 +1,964 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { useData } from '@/context/DataContext';
+import { useBundles } from '@/context/BundleContext';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { toast } from '@/hooks/use-toast';
+import { NEGERI_OPTIONS } from '@/types';
+import { ArrowLeft, Save, Loader2, CalendarIcon, Upload } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
+const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC', 'REPEAT'];
+const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
+const JENIS_BAYARAN_OPTIONS = ['Online Transfer', 'Credit Card', 'CDM', 'CASH'];
+const BANK_OPTIONS = [
+  'Maybank',
+  'CIMB Bank',
+  'Public Bank',
+  'RHB Bank',
+  'Hong Leong Bank',
+  'AmBank',
+  'Bank Islam',
+  'Bank Rakyat',
+  'Affin Bank',
+  'Alliance Bank',
+  'OCBC Bank',
+  'HSBC Bank',
+  'Standard Chartered',
+  'UOB Bank',
+  'BSN',
+];
+
+const FormLabel: React.FC<{ required?: boolean; children: React.ReactNode }> = ({ required, children }) => (
+  <label className="block text-sm font-medium text-foreground mb-1.5">
+    {children}
+    {required && <span className="text-red-500 ml-0.5">*</span>}
+  </label>
+);
+
+const OrderForm: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { profile } = useAuth();
+  const { addOrder, updateOrder, orders, refreshData } = useData();
+  const { bundles, isLoading: bundlesLoading, refreshData: refreshBundles } = useBundles();
+  const activeBundles = bundles.filter(b => b.isActive);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [tarikhBayaran, setTarikhBayaran] = useState<Date>();
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string>('');
+
+  // Edit mode state
+  const editOrder = location.state?.editOrder;
+  const isEditMode = !!editOrder;
+
+  const [formData, setFormData] = useState({
+    namaPelanggan: '',
+    noPhone: '',
+    jenisPlatform: '',
+    jenisCustomer: '',
+    poskod: '',
+    daerah: '',
+    negeri: '',
+    alamat: '',
+    produk: '',
+    hargaJualan: 0,
+    caraBayaran: '',
+    jenisBayaran: '',
+    pilihBank: '',
+    nota: '',
+    trackingNumber: '',
+  });
+  const [waybillFile, setWaybillFile] = useState<File | null>(null);
+  const [waybillFileName, setWaybillFileName] = useState<string>('');
+
+  // Populate form if editing
+  useEffect(() => {
+    if (editOrder) {
+      setFormData({
+        namaPelanggan: editOrder.marketerName || '',
+        noPhone: editOrder.noPhone || '',
+        jenisPlatform: editOrder.jenisPlatform || '',
+        jenisCustomer: editOrder.jenisCustomer || '',
+        poskod: editOrder.poskod || '',
+        daerah: editOrder.bandar || '',
+        negeri: editOrder.negeri || '',
+        alamat: editOrder.alamat || '',
+        produk: editOrder.produk || '',
+        hargaJualan: editOrder.hargaJualanSebenar || 0,
+        caraBayaran: editOrder.caraBayaran || '',
+        jenisBayaran: '',
+        pilihBank: '',
+        nota: editOrder.notaStaff || '',
+        trackingNumber: editOrder.noTracking || '',
+      });
+    }
+  }, [editOrder]);
+
+  // Refresh bundles when component mounts to ensure fresh data
+  useEffect(() => {
+    refreshBundles();
+  }, []);
+
+  const generateOrderNumber = () => {
+    // Generate unique order number using timestamp + random suffix
+    const timestamp = Date.now();
+    const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ORD${timestamp}${randomSuffix}`;
+  };
+
+  const generateSaleId = async (): Promise<string> => {
+    // Call database function to get next sale ID
+    const { data, error } = await (supabase as any).rpc('generate_sale_id');
+    if (error) {
+      console.error('Error generating sale ID:', error);
+      // Fallback: generate based on timestamp
+      const ts = Date.now().toString().slice(-5);
+      return `DF${ts}`;
+    }
+    return data as string;
+  };
+
+  // Get minimum price based on platform and selected bundle
+  const getMinimumPrice = (bundleName: string, platform: string): number => {
+    const bundle = activeBundles.find(b => b.name === bundleName);
+    if (!bundle) return 0;
+    
+    if (platform === 'Shopee') {
+      return bundle.priceShopee;
+    } else if (platform === 'Tiktok') {
+      return bundle.priceTiktok;
+    } else {
+      return bundle.priceNormal;
+    }
+  };
+
+  const currentMinPrice = getMinimumPrice(formData.produk, formData.jenisPlatform);
+  const isPriceBelowMinimum = formData.hargaJualan > 0 && formData.hargaJualan < currentMinPrice;
+
+  const handleChange = (field: string, value: string | number) => {
+    setFormData((prev) => {
+      // Auto uppercase for text fields (except dropdowns)
+      let processedValue = value;
+      if (typeof value === 'string' && !['jenisPlatform', 'jenisCustomer', 'caraBayaran', 'jenisBayaran', 'pilihBank', 'produk', 'negeri'].includes(field)) {
+        processedValue = value.toUpperCase();
+      }
+      
+      const newData = { ...prev, [field]: processedValue };
+      
+      // Auto-populate price when product or platform changes (only for new orders)
+      if ((field === 'produk' || field === 'jenisPlatform') && !isEditMode) {
+        const bundleName = field === 'produk' ? value as string : prev.produk;
+        const platform = field === 'jenisPlatform' ? value as string : prev.jenisPlatform;
+        
+        if (bundleName) {
+          const minPrice = getMinimumPrice(bundleName, platform);
+          // Only auto-populate if current price is 0 or if switching products
+          if (field === 'produk' || prev.hargaJualan === 0) {
+            newData.hargaJualan = minPrice;
+          }
+        }
+      }
+      
+      return newData;
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleWaybillChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: 'Error',
+          description: 'Sila muat naik fail PDF sahaja.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      setWaybillFile(file);
+      setWaybillFileName(file.name);
+    }
+  };
+
+  const cancelNinjavanOrder = async (trackingNumber: string) => {
+    try {
+      const { data: cancelResult, error: cancelError } = await supabase.functions.invoke('ninjavan-cancel', {
+        body: { trackingNumber }
+      });
+
+      if (cancelError) {
+        console.error('Ninjavan cancel error:', cancelError);
+        return false;
+      } else if (cancelResult?.error) {
+        console.error('Ninjavan cancel API error:', cancelResult.error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error('Cancel API call failed:', err);
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!formData.namaPelanggan || !formData.noPhone || !formData.poskod || !formData.daerah || !formData.negeri || !formData.alamat || !formData.produk || !formData.caraBayaran) {
+      toast({
+        title: 'Error',
+        description: 'Sila lengkapkan semua medan yang diperlukan.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate payment details for CASH (non-Shopee/TikTok)
+    const isShopeeOrTiktokPlatform = formData.jenisPlatform === 'Shopee' || formData.jenisPlatform === 'Tiktok';
+    if (!isShopeeOrTiktokPlatform && formData.caraBayaran === 'CASH') {
+      if (!tarikhBayaran) {
+        toast({
+          title: 'Error',
+          description: 'Sila pilih Tarikh Bayaran.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!formData.jenisBayaran) {
+        toast({
+          title: 'Error',
+          description: 'Sila pilih Jenis Bayaran.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!formData.pilihBank) {
+        toast({
+          title: 'Error',
+          description: 'Sila pilih Bank.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!receiptFile && !isEditMode) {
+        toast({
+          title: 'Error',
+          description: 'Sila muat naik Resit Bayaran.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
+    // Validate minimum price
+    const minPrice = getMinimumPrice(formData.produk, formData.jenisPlatform);
+    if (formData.hargaJualan < minPrice) {
+      toast({
+        title: 'Error',
+        description: `Harga jualan minimum untuk ${formData.jenisPlatform || 'produk ini'} adalah RM${minPrice.toFixed(2)}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate phone starts with 6
+    if (!formData.noPhone.toString().startsWith('6')) {
+      toast({
+        title: 'Error',
+        description: 'No. Telefon mesti bermula dengan 6.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const now = new Date();
+    const tarikhTempahan = now.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+
+    // Set kurier based on platform and cara bayaran
+    let kurier = '';
+    const isShopeeOrTiktokOrder = formData.jenisPlatform === 'Shopee' || formData.jenisPlatform === 'Tiktok';
+    if (isShopeeOrTiktokOrder) {
+      kurier = formData.jenisPlatform; // "Shopee" or "Tiktok"
+    } else {
+      kurier = formData.caraBayaran === 'COD' ? 'Ninjavan COD' : 'Ninjavan CASH';
+    }
+    
+    // Set date_order to today's date
+    const dateOrder = new Date().toISOString().split('T')[0];
+
+    try {
+      let orderNumber = isEditMode ? editOrder.noTempahan : generateOrderNumber();
+      let idSale = isEditMode ? editOrder.idSale : '';
+      let trackingNumber = isShopeeOrTiktokOrder ? formData.trackingNumber : '';
+
+      // Generate new sale ID for new orders (non-Shopee/TikTok)
+      if (!isEditMode && !isShopeeOrTiktokOrder) {
+        idSale = await generateSaleId();
+        console.log('Generated Sale ID:', idSale);
+      }
+
+      // Handle edit mode
+      if (isEditMode) {
+        const wasNinjavanOrder = editOrder.jenisPlatform !== 'Shopee' && editOrder.jenisPlatform !== 'Tiktok';
+        const isNowNinjavanOrder = !isShopeeOrTiktokOrder;
+
+        // If it was a Ninjavan order, cancel the old tracking first
+        if (wasNinjavanOrder && editOrder.noTracking) {
+          console.log('Cancelling old Ninjavan tracking:', editOrder.noTracking);
+          const cancelled = await cancelNinjavanOrder(editOrder.noTracking);
+          if (cancelled) {
+            toast({
+              title: 'Info',
+              description: 'Order Ninjavan lama telah dibatalkan.',
+            });
+          }
+        }
+
+        if (isNowNinjavanOrder) {
+          // Generate new sale ID for edit mode
+          idSale = await generateSaleId();
+          console.log('Generated new Sale ID for edit:', idSale);
+          
+          try {
+            const { data: ninjavanResult, error: ninjavanError } = await supabase.functions.invoke('ninjavan-order', {
+              body: {
+                orderId: orderNumber,
+                idSale: idSale,
+                customerName: formData.namaPelanggan,
+                phone: formData.noPhone,
+                address: formData.alamat,
+                postcode: formData.poskod,
+                city: formData.daerah,
+                state: formData.negeri,
+                price: formData.hargaJualan,
+                caraBayaran: formData.caraBayaran,
+                produk: formData.produk,
+                marketerIdStaff: profile?.username || '',
+              }
+            });
+
+            if (ninjavanError) {
+              console.error('Ninjavan API error:', ninjavanError);
+              toast({
+                title: 'Amaran',
+                description: 'Order dikemaskini tetapi gagal hantar ke Ninjavan.',
+                variant: 'destructive',
+              });
+            } else if (ninjavanResult?.error) {
+              console.error('Ninjavan error:', ninjavanResult.error);
+              toast({
+                title: 'Amaran',
+                description: ninjavanResult.error,
+                variant: 'destructive',
+              });
+            } else if (ninjavanResult?.trackingNumber) {
+              trackingNumber = ninjavanResult.trackingNumber;
+              toast({
+                title: 'Ninjavan Berjaya',
+                description: `Tracking Number Baru: ${trackingNumber}`,
+              });
+            }
+          } catch (ninjavanErr) {
+            console.error('Ninjavan call failed:', ninjavanErr);
+          }
+        }
+
+        // Update existing order in database
+        const { error: updateError } = await supabase
+          .from('customer_orders')
+          .update({
+            marketer_name: formData.namaPelanggan,
+            no_phone: formData.noPhone,
+            alamat: formData.alamat,
+            poskod: formData.poskod,
+            bandar: formData.daerah,
+            negeri: formData.negeri,
+            produk: formData.produk,
+            sku: formData.produk,
+            harga_jualan_produk: formData.hargaJualan,
+            harga_jualan_sebenar: formData.hargaJualan,
+            profit: formData.hargaJualan,
+            kurier,
+            no_tracking: trackingNumber,
+            jenis_platform: formData.jenisPlatform,
+            jenis_customer: formData.jenisCustomer,
+            cara_bayaran: formData.caraBayaran,
+            nota_staff: formData.nota,
+          })
+          .eq('id', editOrder.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        await refreshData();
+
+        toast({
+          title: 'Order Dikemaskini',
+          description: 'Tempahan pelanggan telah berjaya dikemaskini.',
+        });
+      } else {
+        // New order flow
+        // If platform is NOT Shopee or Tiktok, call Ninjavan API
+        const shouldCallNinjavan = !isShopeeOrTiktokOrder;
+        
+        if (shouldCallNinjavan) {
+          try {
+            const { data: ninjavanResult, error: ninjavanError } = await supabase.functions.invoke('ninjavan-order', {
+              body: {
+                orderId: orderNumber,
+                idSale: idSale,
+                customerName: formData.namaPelanggan,
+                phone: formData.noPhone,
+                address: formData.alamat,
+                postcode: formData.poskod,
+                city: formData.daerah,
+                state: formData.negeri,
+                price: formData.hargaJualan,
+                caraBayaran: formData.caraBayaran,
+                produk: formData.produk,
+                marketerIdStaff: profile?.username || '',
+              }
+            });
+
+            if (ninjavanError) {
+              console.error('Ninjavan API error:', ninjavanError);
+              toast({
+                title: 'Amaran',
+                description: 'Order disimpan tetapi gagal hantar ke Ninjavan. Sila hubungi logistik.',
+                variant: 'destructive',
+              });
+            } else if (ninjavanResult?.error) {
+              console.error('Ninjavan error:', ninjavanResult.error);
+              toast({
+                title: 'Amaran',
+                description: ninjavanResult.error,
+                variant: 'destructive',
+              });
+            } else if (ninjavanResult?.trackingNumber) {
+              trackingNumber = ninjavanResult.trackingNumber;
+              toast({
+                title: 'Ninjavan Berjaya',
+                description: `Tracking Number: ${trackingNumber}`,
+              });
+            }
+          } catch (ninjavanErr) {
+            console.error('Ninjavan call failed:', ninjavanErr);
+            // Continue to save order even if Ninjavan fails
+          }
+        }
+
+        await addOrder({
+          noTempahan: orderNumber,
+          idSale: idSale,
+          marketerIdStaff: profile?.username || '',
+          marketerName: formData.namaPelanggan,
+          noPhone: formData.noPhone,
+          alamat: formData.alamat,
+          poskod: formData.poskod,
+          bandar: formData.daerah,
+          negeri: formData.negeri,
+          sku: formData.produk,
+          produk: formData.produk,
+          kuantiti: 1,
+          hargaJualanProduk: formData.hargaJualan,
+          hargaJualanSebenar: formData.hargaJualan,
+          kosPos: 0,
+          kosProduk: 0,
+          profit: formData.hargaJualan,
+          hargaJualanAgen: 0,
+          tarikhTempahan,
+          kurier,
+          noTracking: trackingNumber,
+          statusParcel: 'Pending',
+          deliveryStatus: 'Pending',
+          dateOrder,
+          dateProcessed: '',
+          jenisPlatform: formData.jenisPlatform,
+          jenisCustomer: formData.jenisCustomer,
+          caraBayaran: formData.caraBayaran,
+          notaStaff: formData.nota,
+          beratParcel: 0,
+        });
+
+        // If NP or EP, find latest lead from this marketer matching SKU (niche) and update status_closed and price_closed
+        if (formData.jenisCustomer === 'NP' || formData.jenisCustomer === 'EP') {
+          try {
+            // Get the SKU from the selected bundle
+            const selectedBundle = activeBundles.find(b => b.name === formData.produk);
+            const productSku = selectedBundle?.productSku || '';
+            
+            const { data: latestLead } = await supabase
+              .from('prospects')
+              .select('id')
+              .eq('jenis_prospek', formData.jenisCustomer)
+              .eq('niche', productSku)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (latestLead) {
+              await supabase
+                .from('prospects')
+                .update({
+                  status_closed: 'closed',
+                  price_closed: formData.hargaJualan,
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', latestLead.id);
+            }
+          } catch (err) {
+            console.error('Error updating prospect:', err);
+          }
+        }
+
+        toast({
+          title: 'Order Berjaya',
+          description: 'Tempahan pelanggan telah berjaya disimpan.',
+        });
+      }
+
+      navigate('/dashboard/orders');
+    } catch (error) {
+      console.error('Error creating/updating order:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menyimpan tempahan. Sila cuba lagi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isShopeeOrTiktok = formData.jenisPlatform === 'Shopee' || formData.jenisPlatform === 'Tiktok';
+  const showPaymentDetails = formData.caraBayaran === 'CASH' && !isShopeeOrTiktok;
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate('/dashboard/orders')}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            {isEditMode ? 'Edit Tempahan' : 'Tempahan Baru'}
+          </h1>
+          <p className="text-muted-foreground">
+            {isEditMode ? 'Kemaskini butiran tempahan' : 'Isi butiran untuk membuat tempahan baru'}
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Customer & Order Information */}
+        <div className="bg-card border border-border rounded-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Nama Pelanggan */}
+            <div>
+              <FormLabel required>Nama Pelanggan</FormLabel>
+              <Input
+                placeholder="Masukkan nama pelanggan"
+                value={formData.namaPelanggan}
+                onChange={(e) => handleChange('namaPelanggan', e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            {/* No. Telefon */}
+            <div>
+              <FormLabel required>No. Telefon (digit start with 6)</FormLabel>
+              <Input
+                type="number"
+                placeholder="60123456789"
+                value={formData.noPhone}
+                onChange={(e) => handleChange('noPhone', e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            {/* Jenis Platform */}
+            <div>
+              <FormLabel required>Jenis Platform</FormLabel>
+              <Select
+                value={formData.jenisPlatform}
+                onValueChange={(value) => handleChange('jenisPlatform', value)}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Pilih Platform" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PLATFORM_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Jenis Customer */}
+            <div>
+              <FormLabel required>Jenis Customer</FormLabel>
+              <Select
+                value={formData.jenisCustomer}
+                onValueChange={(value) => handleChange('jenisCustomer', value)}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Pilih Jenis Customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CUSTOMER_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Poskod */}
+            <div>
+              <FormLabel required>Poskod</FormLabel>
+              <Input
+                type="number"
+                placeholder="Masukkan poskod"
+                value={formData.poskod}
+                onChange={(e) => handleChange('poskod', e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            {/* Daerah */}
+            <div>
+              <FormLabel required>Daerah</FormLabel>
+              <Input
+                placeholder="Masukkan daerah"
+                value={formData.daerah}
+                onChange={(e) => handleChange('daerah', e.target.value)}
+                className="bg-background"
+              />
+            </div>
+
+            {/* Negeri */}
+            <div>
+              <FormLabel required>Negeri</FormLabel>
+              <Select
+                value={formData.negeri}
+                onValueChange={(value) => handleChange('negeri', value)}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Pilih Negeri" />
+                </SelectTrigger>
+                <SelectContent>
+                  {NEGERI_OPTIONS.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Alamat */}
+            <div className="lg:col-span-4">
+              <FormLabel required>Alamat</FormLabel>
+              <Textarea
+                placeholder="Masukkan alamat penuh"
+                value={formData.alamat}
+                onChange={(e) => handleChange('alamat', e.target.value)}
+                className="bg-background resize-none"
+                rows={3}
+              />
+            </div>
+
+            {/* Produk */}
+            <div>
+              <FormLabel required>Produk</FormLabel>
+              <Select
+                value={formData.produk}
+                onValueChange={(value) => handleChange('produk', value)}
+                disabled={bundlesLoading}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder={bundlesLoading ? "Loading..." : "Pilih Produk"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {bundlesLoading ? (
+                    <SelectItem value="loading" disabled>Loading bundles...</SelectItem>
+                  ) : activeBundles.length === 0 ? (
+                    <SelectItem value="empty" disabled>No active bundles available</SelectItem>
+                  ) : (
+                    activeBundles.map((bundle) => (
+                      <SelectItem key={bundle.id} value={bundle.name}>{bundle.name}</SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+
+            {/* Harga Jualan */}
+            <div>
+              <FormLabel required>Harga Jualan (RM)</FormLabel>
+              <Input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.hargaJualan || ''}
+                onChange={(e) => handleChange('hargaJualan', parseFloat(e.target.value) || 0)}
+                className={cn("bg-background", isPriceBelowMinimum && "border-red-500 focus-visible:ring-red-500")}
+              />
+              {currentMinPrice > 0 && (
+                <p className={cn("text-xs mt-1", isPriceBelowMinimum ? "text-red-500" : "text-muted-foreground")}>
+                  Harga minimum: RM{currentMinPrice.toFixed(2)}
+                  {isPriceBelowMinimum && " - Harga terlalu rendah!"}
+                </p>
+              )}
+            </div>
+
+            {/* Cara Bayaran */}
+            <div>
+              <FormLabel required>Cara Bayaran</FormLabel>
+              <Select
+                value={formData.caraBayaran}
+                onValueChange={(value) => handleChange('caraBayaran', value)}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Pilih Cara Bayaran" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARA_BAYARAN_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Tracking Number - Only for Shopee/Tiktok */}
+            {isShopeeOrTiktok && (
+              <div>
+                <FormLabel required>No. Tracking</FormLabel>
+                <Input
+                  placeholder="Masukkan tracking number"
+                  value={formData.trackingNumber}
+                  onChange={(e) => handleChange('trackingNumber', e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+            )}
+
+            {/* Waybill Attachment - Only for Shopee/Tiktok */}
+            {isShopeeOrTiktok && (
+              <div>
+                <FormLabel required>Waybill Attachment (PDF)</FormLabel>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={handleWaybillChange}
+                    className="hidden"
+                    id="waybill-upload"
+                  />
+                  <label
+                    htmlFor="waybill-upload"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors bg-background"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span className="text-sm text-muted-foreground">
+                      {waybillFileName || (isEditMode && editOrder.noTracking ? 'PDF sudah dimuat naik' : 'Upload PDF Waybill')}
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Nota - Always visible */}
+            <div className="lg:col-span-2">
+              <FormLabel>Nota</FormLabel>
+              <Textarea
+                placeholder="Masukkan nota tambahan (optional)"
+                value={formData.nota}
+                onChange={(e) => handleChange('nota', e.target.value)}
+                className="bg-background resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Payment Details - Only show if CASH is selected */}
+        {showPaymentDetails && (
+          <div className="bg-card border border-border rounded-lg p-6 border-l-4 border-l-emerald-500">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Butiran Bayaran</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* Tarikh Bayaran */}
+              <div>
+                <FormLabel required>Tarikh Bayaran</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal bg-background",
+                        !tarikhBayaran && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {tarikhBayaran ? format(tarikhBayaran, "dd/MM/yyyy") : "Pilih tarikh"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={tarikhBayaran}
+                      onSelect={setTarikhBayaran}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Jenis Bayaran */}
+              <div>
+                <FormLabel required>Jenis Bayaran</FormLabel>
+                <Select
+                  value={formData.jenisBayaran}
+                  onValueChange={(value) => handleChange('jenisBayaran', value)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Pilih Jenis Bayaran" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {JENIS_BAYARAN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Pilih Bank */}
+              <div>
+                <FormLabel required>Pilih Bank</FormLabel>
+                <Select
+                  value={formData.pilihBank}
+                  onValueChange={(value) => handleChange('pilihBank', value)}
+                >
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Pilih Bank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BANK_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Resit Bayaran */}
+              <div>
+                <FormLabel required>Resit Bayaran</FormLabel>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="receipt-upload"
+                  />
+                  <label
+                    htmlFor="receipt-upload"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2 border border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors bg-background"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span className="text-sm text-muted-foreground">
+                      {receiptFile ? receiptFile.name : (isEditMode ? 'Resit sudah dimuat naik' : 'Upload Resit')}
+                    </span>
+                  </label>
+                  {receiptPreview && (
+                    <img
+                      src={receiptPreview}
+                      alt="Receipt preview"
+                      className="mt-2 w-full h-32 object-cover rounded-lg border border-border"
+                    />
+                  )}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate('/dashboard/orders')}
+          >
+            Batal
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {isEditMode ? 'Mengemaskini...' : 'Menyimpan...'}
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                {isEditMode ? 'Kemaskini' : 'Submit'}
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default OrderForm;

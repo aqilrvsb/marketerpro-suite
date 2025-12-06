@@ -1,0 +1,7 @@
+project_id = "xjcfyfkpavyonxrdczgs"
+
+[functions.ninjavan-order]
+verify_jwt = true
+
+[functions.ninjavan-cancel]
+verify_jwt = true

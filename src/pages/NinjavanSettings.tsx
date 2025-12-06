@@ -23,7 +23,6 @@ interface NinjavanConfig {
   sender_phone: string;
   sender_email: string;
   sender_address1: string;
-  sender_address2: string;
   sender_postcode: string;
   sender_city: string;
   sender_state: string;
@@ -49,7 +48,6 @@ const NinjavanSettings: React.FC = () => {
     sender_phone: '',
     sender_email: '',
     sender_address1: '',
-    sender_address2: '',
     sender_postcode: '',
     sender_city: '',
     sender_state: '',
@@ -80,7 +78,6 @@ const NinjavanSettings: React.FC = () => {
           sender_phone: configData.sender_phone || '',
           sender_email: configData.sender_email || '',
           sender_address1: configData.sender_address1 || '',
-          sender_address2: configData.sender_address2 || '',
           sender_postcode: configData.sender_postcode || '',
           sender_city: configData.sender_city || '',
           sender_state: configData.sender_state || '',
@@ -252,7 +249,7 @@ const NinjavanSettings: React.FC = () => {
               />
             </div>
             <div className="lg:col-span-3">
-              <FormLabel required>Address Line 1</FormLabel>
+              <FormLabel required>Address</FormLabel>
               <Textarea
                 placeholder="Enter full address (max 100 characters)"
                 value={formData.sender_address1}
@@ -260,15 +257,6 @@ const NinjavanSettings: React.FC = () => {
                 className="bg-background resize-none"
                 rows={2}
                 maxLength={100}
-              />
-            </div>
-            <div className="lg:col-span-3">
-              <FormLabel>Address Line 2 (Optional)</FormLabel>
-              <Input
-                placeholder="Additional address info"
-                value={formData.sender_address2}
-                onChange={(e) => handleChange('sender_address2', e.target.value)}
-                className="bg-background"
               />
             </div>
             <div>

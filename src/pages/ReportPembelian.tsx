@@ -105,14 +105,13 @@ const ReportPembelian: React.FC = () => {
         return false;
       }
 
-      // Filter by search
+      // Filter by search (no ID Staff filter - show all)
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesSearch =
           (order.no_tempahan || '').toLowerCase().includes(searchLower) ||
           (order.produk || '').toLowerCase().includes(searchLower) ||
           (order.marketer_name || '').toLowerCase().includes(searchLower) ||
-          (order.marketer_id_staff || '').toLowerCase().includes(searchLower) ||
           (order.no_phone || '').toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
@@ -220,7 +219,7 @@ const ReportPembelian: React.FC = () => {
           <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search name, phone, product, ID Staff..."
+              placeholder="Search name, phone, product..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-10"

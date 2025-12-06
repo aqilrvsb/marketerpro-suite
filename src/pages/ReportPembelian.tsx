@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, RotateCcw, Download, Calendar, Loader2, ShoppingCart } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useData } from '@/context/DataContext';
+import { useBundles } from '@/context/BundleContext';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Dialog,
@@ -11,41 +12,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 
-interface Order {
-  id: string;
-  no_tempahan: string;
-  marketer_id_staff: string;
-  marketer_name: string;
-  no_phone: string;
-  alamat: string;
-  negeri: string;
-  produk: string;
-  kuantiti: number;
-  no_tracking: string;
-  harga_jualan_sebenar: number;
-  cara_bayaran: string;
-  delivery_status: string;
-  jenis_platform: string;
-  jenis_customer: string;
-  date_order: string;
-  tarikh_tempahan: string;
-  tarikh_bayaran: string;
-  jenis_bayaran: string;
-  bank: string;
-  seo: string;
-  receipt_image_url: string;
-}
-
-interface Bundle {
-  id: string;
-  name: string;
-  product_name: string;
-}
-
 const ReportPembelian: React.FC = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [bundles, setBundles] = useState<Bundle[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { orders, isLoading } = useData();
+  const { bundles } = useBundles();
   const [search, setSearch] = useState('');
 
   // Date filter - default to current month
@@ -55,61 +24,25 @@ const ReportPembelian: React.FC = () => {
 
   // Payment details modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedOrderPayment, setSelectedOrderPayment] = useState<Order | null>(null);
-
-  // Fetch all orders and bundles
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [ordersRes, bundlesRes] = await Promise.all([
-          (supabase as any)
-            .from('customer_orders')
-            .select('*')
-            .order('created_at', { ascending: false }),
-          (supabase as any)
-            .from('bundles')
-            .select('id, name, product_name'),
-        ]);
-
-        if (ordersRes.error) throw ordersRes.error;
-        if (bundlesRes.error) throw bundlesRes.error;
-
-        setOrders(ordersRes.data || []);
-        setBundles(bundlesRes.data || []);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const [selectedOrderPayment, setSelectedOrderPayment] = useState<any>(null);
 
   // Filter orders by date range and search
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Filter by date_order only
-      if (!order.date_order) return false;
+      // Filter by dateOrder (mapped from date_order)
+      if (!order.dateOrder) return false;
 
-      try {
-        // date_order format: "2025-12-06" (YYYY-MM-DD)
-        // Simple string comparison works for YYYY-MM-DD format
-        const orderDateStr = order.date_order;
-        if (orderDateStr < startDate || orderDateStr > endDate) return false;
-      } catch {
-        return false;
-      }
+      // Simple string comparison for YYYY-MM-DD format
+      if (order.dateOrder < startDate || order.dateOrder > endDate) return false;
 
       // Filter by search (no ID Staff filter - show all)
       if (search) {
         const searchLower = search.toLowerCase();
         const matchesSearch =
-          (order.no_tempahan || '').toLowerCase().includes(searchLower) ||
+          (order.noTempahan || '').toLowerCase().includes(searchLower) ||
           (order.produk || '').toLowerCase().includes(searchLower) ||
-          (order.marketer_name || '').toLowerCase().includes(searchLower) ||
-          (order.no_phone || '').toLowerCase().includes(searchLower);
+          (order.marketerName || '').toLowerCase().includes(searchLower) ||
+          (order.noPhone || '').toLowerCase().includes(searchLower);
         if (!matchesSearch) return false;
       }
 
@@ -127,18 +60,18 @@ const ReportPembelian: React.FC = () => {
     const headers = ['No', 'Tarikh Order', 'ID Staff', 'Nama Pelanggan', 'Phone', 'Produk', 'Unit', 'Tracking No', 'Total Sales', 'Cara Bayaran', 'Delivery Status', 'Jenis Platform', 'Jenis Customer', 'Negeri', 'Alamat', 'SEO'];
     const rows = filteredOrders.map((order, idx) => [
       idx + 1,
-      order.date_order,
-      order.marketer_id_staff,
-      order.marketer_name,
-      order.no_phone,
+      order.dateOrder,
+      order.marketerIdStaff,
+      order.marketerName,
+      order.noPhone,
       order.produk,
       order.kuantiti || 1,
-      order.no_tracking || '-',
-      order.harga_jualan_sebenar,
-      order.cara_bayaran || '-',
-      order.delivery_status,
-      order.jenis_platform || '-',
-      order.jenis_customer || '-',
+      order.noTracking || '-',
+      order.hargaJualanSebenar,
+      order.caraBayaran || '-',
+      order.deliveryStatus,
+      order.jenisPlatform || '-',
+      order.jenisCustomer || '-',
       order.negeri,
       order.alamat,
       order.seo || '-',
@@ -154,15 +87,15 @@ const ReportPembelian: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handlePaymentClick = (order: Order) => {
+  const handlePaymentClick = (order: any) => {
     setSelectedOrderPayment(order);
     setPaymentModalOpen(true);
   };
 
   const getProductDisplay = (produk: string) => {
     const bundle = bundles.find(b => b.name === produk);
-    if (bundle && bundle.product_name) {
-      return `${bundle.name} + ${bundle.product_name}`;
+    if (bundle && bundle.productName) {
+      return `${bundle.name} + ${bundle.productName}`;
     }
     return produk;
   };
@@ -239,7 +172,7 @@ const ReportPembelian: React.FC = () => {
       {/* Summary Row */}
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span>Total Orders: <strong className="text-foreground">{filteredOrders.length}</strong></span>
-        <span>Total Sales: <strong className="text-success">RM {filteredOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
+        <span>Total Sales: <strong className="text-success">RM {filteredOrders.reduce((sum, o) => sum + (Number(o.hargaJualanSebenar) || 0), 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>
       </div>
 
       {/* Table */}
@@ -271,16 +204,16 @@ const ReportPembelian: React.FC = () => {
                 filteredOrders.map((order, index) => (
                   <tr key={order.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{index + 1}</td>
-                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.date_order}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-primary whitespace-nowrap">{order.marketer_id_staff}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">{order.marketer_name}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-foreground whitespace-nowrap">{order.no_phone}</td>
+                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.dateOrder}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-primary whitespace-nowrap">{order.marketerIdStaff}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">{order.marketerName}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-foreground whitespace-nowrap">{order.noPhone}</td>
                     <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{getProductDisplay(order.produk)}</td>
                     <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.kuantiti || 1}</td>
-                    <td className="px-4 py-3 text-sm font-mono text-foreground whitespace-nowrap">{order.no_tracking || '-'}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">RM {(Number(order.harga_jualan_sebenar) || 0).toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-mono text-foreground whitespace-nowrap">{order.noTracking || '-'}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-foreground whitespace-nowrap">RM {(Number(order.hargaJualanSebenar) || 0).toFixed(2)}</td>
                     <td className="px-4 py-3 text-sm whitespace-nowrap">
-                      {order.cara_bayaran === 'CASH' ? (
+                      {order.caraBayaran === 'CASH' ? (
                         <button
                           onClick={() => handlePaymentClick(order)}
                           className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
@@ -288,22 +221,22 @@ const ReportPembelian: React.FC = () => {
                           CASH
                         </button>
                       ) : (
-                        <span className="text-muted-foreground">{order.cara_bayaran || '-'}</span>
+                        <span className="text-muted-foreground">{order.caraBayaran || '-'}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        order.delivery_status === 'Success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                        order.delivery_status === 'Shipped' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
-                        order.delivery_status === 'Pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
-                        order.delivery_status === 'Processing' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                        order.deliveryStatus === 'Success' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                        order.deliveryStatus === 'Shipped' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                        order.deliveryStatus === 'Pending' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                        order.deliveryStatus === 'Processing' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
                         'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                       }`}>
-                        {order.delivery_status}
+                        {order.deliveryStatus}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{order.jenis_platform || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{order.jenis_customer || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{order.jenisPlatform || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{order.jenisCustomer || '-'}</td>
                     <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{order.negeri}</td>
                     <td className="px-4 py-3 text-sm text-foreground max-w-xs truncate">{order.alamat}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -341,11 +274,11 @@ const ReportPembelian: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Tarikh Bayaran</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.tarikh_bayaran || '-'}</p>
+                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.tarikhBayaran || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Jenis Bayaran</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.jenis_bayaran || '-'}</p>
+                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.jenisBayaran || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Bank</p>
@@ -353,14 +286,14 @@ const ReportPembelian: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Harga Jualan</p>
-                  <p className="text-sm font-medium text-foreground">RM {(Number(selectedOrderPayment.harga_jualan_sebenar) || 0).toFixed(2)}</p>
+                  <p className="text-sm font-medium text-foreground">RM {(Number(selectedOrderPayment.hargaJualanSebenar) || 0).toFixed(2)}</p>
                 </div>
               </div>
-              {selectedOrderPayment.receipt_image_url && (
+              {selectedOrderPayment.receiptImageUrl && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Resit Bayaran</p>
                   <img
-                    src={selectedOrderPayment.receipt_image_url}
+                    src={selectedOrderPayment.receiptImageUrl}
                     alt="Receipt"
                     className="max-w-full h-auto rounded-lg border border-border"
                   />

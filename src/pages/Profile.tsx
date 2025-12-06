@@ -10,12 +10,10 @@ const Profile: React.FC = () => {
   const { profile } = useAuth();
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isUpdatingWhatsApp, setIsUpdatingWhatsApp] = useState(false);
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
@@ -46,24 +44,14 @@ const Profile: React.FC = () => {
     setIsChangingPassword(true);
 
     try {
-      // Call the change_password function
-      const { data, error } = await supabase.rpc('change_password', {
-        p_user_id: profile?.id,
-        p_current_password: passwordForm.currentPassword.toUpperCase(),
-        p_new_password: passwordForm.newPassword.toUpperCase(),
-      });
+      // Directly update password in profiles table
+      const { error } = await supabase
+        .from('profiles')
+        .update({ password_hash: passwordForm.newPassword.toUpperCase() })
+        .eq('id', profile?.id);
 
       if (error) {
         throw error;
-      }
-
-      if (!data) {
-        toast({
-          title: 'Error',
-          description: 'Kata laluan semasa tidak betul.',
-          variant: 'destructive',
-        });
-        return;
       }
 
       toast({
@@ -72,7 +60,6 @@ const Profile: React.FC = () => {
       });
 
       setPasswordForm({
-        currentPassword: '',
         newPassword: '',
         confirmPassword: '',
       });
@@ -161,28 +148,6 @@ const Profile: React.FC = () => {
           </div>
 
           <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Kata Laluan Semasa
-              </label>
-              <div className="relative">
-                <Input
-                  type={showCurrentPassword ? "text" : "password"}
-                  placeholder="Masukkan kata laluan semasa"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  className="bg-background pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 Kata Laluan Baru

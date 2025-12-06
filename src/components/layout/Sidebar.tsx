@@ -100,6 +100,12 @@ const navItems: NavItem[] = [
     roles: ['logistic'],
   },
   {
+    label: 'Pending Tracking',
+    path: '/dashboard/logistics/pending-tracking',
+    icon: <ClipboardList className="w-5 h-5" />,
+    roles: ['logistic'],
+  },
+  {
     label: 'Product',
     path: '/dashboard/logistics/product',
     icon: <Package className="w-5 h-5" />,

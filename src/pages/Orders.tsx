@@ -480,6 +480,7 @@ const Orders: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Jenis Customer</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Negeri</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Alamat</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">SEO</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Action</th>
               </tr>
             </thead>
@@ -546,6 +547,16 @@ const Orders: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-foreground">{order.negeri}</td>
                     <td className="px-4 py-3 text-sm text-foreground max-w-xs truncate">{order.alamat}</td>
                     <td className="px-4 py-3">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        order.seo === 'Successfull Delivery' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                        order.seo === 'Shipped' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                        order.seo === 'Return' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-gray-100 text-gray-600 dark:bg-gray-900/30 dark:text-gray-400'
+                      }`}>
+                        {order.seo || '-'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
                       {order.deliveryStatus === 'Pending' && (
                         <div className="flex items-center gap-2">
                           <button
@@ -569,7 +580,7 @@ const Orders: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={16} className="px-4 py-12 text-center text-muted-foreground">
                     No orders found.
                   </td>
                 </tr>

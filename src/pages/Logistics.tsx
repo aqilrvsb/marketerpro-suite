@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2, RotateCcw } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2, RotateCcw, ClipboardList, Save } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { STATUS_OPTIONS, KURIER_OPTIONS } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,12 +73,29 @@ const Logistics: React.FC = () => {
   const [returnCaraBayaranFilter, setReturnCaraBayaranFilter] = useState('All');
   const [returnSearch, setReturnSearch] = useState('');
 
+  // Pending Tracking tab states
+  const [pendingTrackingStartDate, setPendingTrackingStartDate] = useState('');
+  const [pendingTrackingEndDate, setPendingTrackingEndDate] = useState('');
+  const [pendingTrackingPageSize, setPendingTrackingPageSize] = useState(10);
+  const [pendingTrackingCurrentPage, setPendingTrackingCurrentPage] = useState(1);
+  const [selectedPendingTrackingOrders, setSelectedPendingTrackingOrders] = useState<Set<string>>(new Set());
+  const [pendingTrackingPlatformFilter, setPendingTrackingPlatformFilter] = useState('All');
+  const [pendingTrackingCaraBayaranFilter, setPendingTrackingCaraBayaranFilter] = useState('All');
+  const [pendingTrackingSearch, setPendingTrackingSearch] = useState('');
+
+  // Bulk update states for Pending Tracking
+  const [bulkStatus, setBulkStatus] = useState<'Success' | 'Return'>('Success');
+  const [bulkDate, setBulkDate] = useState('');
+  const [bulkTrackingList, setBulkTrackingList] = useState('');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+
   // Loading states
   const [isShipping, setIsShipping] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPendingAction, setIsPendingAction] = useState(false);
   const [isShipmentPrinting, setIsShipmentPrinting] = useState(false);
   const [isReturnPrinting, setIsReturnPrinting] = useState(false);
+  const [isPendingTrackingPrinting, setIsPendingTrackingPrinting] = useState(false);
 
   // Determine current tab from URL path
   const getTabFromPath = () => {
@@ -88,6 +106,7 @@ const Logistics: React.FC = () => {
     if (location.pathname.includes('/logistics/order')) return 'order';
     if (location.pathname.includes('/logistics/shipment')) return 'shipment';
     if (location.pathname.includes('/logistics/return')) return 'return';
+    if (location.pathname.includes('/logistics/pending-tracking')) return 'pending-tracking';
     return 'order';
   };
 
@@ -99,9 +118,11 @@ const Logistics: React.FC = () => {
     setSelectedOrders(new Set());
     setSelectedShipmentOrders(new Set());
     setSelectedReturnOrders(new Set());
+    setSelectedPendingTrackingOrders(new Set());
     setCurrentPage(1);
     setShipmentCurrentPage(1);
     setReturnCurrentPage(1);
+    setPendingTrackingCurrentPage(1);
   };
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -295,6 +316,71 @@ const Logistics: React.FC = () => {
     return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
   });
 
+  // Filter orders for Pending Tracking tab - Shipped AND SEO != 'Successfull Delivery', filter by date_order
+  const pendingTrackingOrders = orders.filter((order) => {
+    const isShipped = order.deliveryStatus === 'Shipped';
+    const seoNotSuccess = order.seo !== 'Successfull Delivery';
+    if (!isShipped || !seoNotSuccess) return false;
+
+    // Advanced search with + for combining filters
+    let matchesSearch = true;
+    if (pendingTrackingSearch.trim()) {
+      const searchTerms = pendingTrackingSearch.toLowerCase().split('+').map(s => s.trim()).filter(Boolean);
+
+      if (searchTerms.length > 1) {
+        matchesSearch = searchTerms.every(term => {
+          return (
+            order.marketerName.toLowerCase().includes(term) ||
+            order.noPhone.toLowerCase().includes(term) ||
+            order.alamat.toLowerCase().includes(term) ||
+            (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+            (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+            (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+            (order.produk && order.produk.toLowerCase().includes(term)) ||
+            (order.noTracking && order.noTracking.toLowerCase().includes(term)) ||
+            (order.marketerIdStaff && order.marketerIdStaff.toLowerCase().includes(term))
+          );
+        });
+      } else {
+        const term = searchTerms[0] || '';
+        matchesSearch =
+          order.marketerName.toLowerCase().includes(term) ||
+          order.noPhone.toLowerCase().includes(term) ||
+          order.alamat.toLowerCase().includes(term) ||
+          (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+          (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+          (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+          (order.produk && order.produk.toLowerCase().includes(term)) ||
+          (order.noTracking && order.noTracking.toLowerCase().includes(term)) ||
+          (order.marketerIdStaff && order.marketerIdStaff.toLowerCase().includes(term));
+      }
+    }
+
+    // Platform filter
+    const matchesPlatform = pendingTrackingPlatformFilter === 'All' || order.jenisPlatform === pendingTrackingPlatformFilter;
+
+    // Cara Bayaran filter
+    const matchesCaraBayaran = pendingTrackingCaraBayaranFilter === 'All' || order.caraBayaran === pendingTrackingCaraBayaranFilter;
+
+    // Date filter by date_order
+    let matchesDate = true;
+    if (pendingTrackingStartDate || pendingTrackingEndDate) {
+      const dateOrder = order.dateOrder ? new Date(order.dateOrder) : null;
+      if (dateOrder) {
+        if (pendingTrackingStartDate) {
+          matchesDate = matchesDate && dateOrder >= new Date(pendingTrackingStartDate);
+        }
+        if (pendingTrackingEndDate) {
+          matchesDate = matchesDate && dateOrder <= new Date(pendingTrackingEndDate);
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
+  });
+
   // Pagination logic for Order tab
   const totalPages = Math.ceil(pendingOrders.length / pageSize);
   const paginatedOrders = pendingOrders.slice(
@@ -316,6 +402,13 @@ const Logistics: React.FC = () => {
     returnCurrentPage * returnPageSize
   );
 
+  // Pagination logic for Pending Tracking tab
+  const pendingTrackingTotalPages = Math.ceil(pendingTrackingOrders.length / pendingTrackingPageSize);
+  const paginatedPendingTrackingOrders = pendingTrackingOrders.slice(
+    (pendingTrackingCurrentPage - 1) * pendingTrackingPageSize,
+    pendingTrackingCurrentPage * pendingTrackingPageSize
+  );
+
   // Order tab counts - Pending orders
   const orderCounts = {
     totalPending: pendingOrders.length,
@@ -335,6 +428,13 @@ const Logistics: React.FC = () => {
     totalReturn: returnOrders.length,
     cashReturn: returnOrders.filter((o) => o.caraBayaran === 'CASH').length,
     codReturn: returnOrders.filter((o) => o.caraBayaran === 'COD').length,
+  };
+
+  // Pending Tracking tab counts
+  const pendingTrackingCounts = {
+    totalOrder: pendingTrackingOrders.length,
+    cashOrder: pendingTrackingOrders.filter((o) => o.caraBayaran === 'CASH').length,
+    codOrder: pendingTrackingOrders.filter((o) => o.caraBayaran === 'COD').length,
   };
 
   // Process order - update delivery_status to Shipped and set date_processed
@@ -396,13 +496,14 @@ const Logistics: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      // Update all selected orders
+      // Update all selected orders - also set SEO to 'Shipped'
       const updatePromises = Array.from(selectedOrders).map(orderId =>
         supabase
           .from('customer_orders')
           .update({
             delivery_status: 'Shipped',
             date_processed: today,
+            seo: 'Shipped',
             updated_at: new Date().toISOString(),
           })
           .eq('id', orderId)
@@ -540,6 +641,12 @@ const Logistics: React.FC = () => {
   const handleReturnFilterChange = () => {
     setReturnCurrentPage(1);
     setSelectedReturnOrders(new Set());
+  };
+
+  // Reset page when pending tracking filters change
+  const handlePendingTrackingFilterChange = () => {
+    setPendingTrackingCurrentPage(1);
+    setSelectedPendingTrackingOrders(new Set());
   };
 
   // Return checkbox handlers
@@ -692,13 +799,14 @@ const Logistics: React.FC = () => {
     setIsPendingAction(true);
 
     try {
-      // Update all selected orders - set date_processed to null and delivery_status to Pending
+      // Update all selected orders - set date_processed to null, delivery_status to Pending, and SEO to null
       const updatePromises = Array.from(selectedShipmentOrders).map(orderId =>
         supabase
           .from('customer_orders')
           .update({
             delivery_status: 'Pending',
             date_processed: null,
+            seo: null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', orderId)
@@ -813,6 +921,219 @@ const Logistics: React.FC = () => {
       });
     } finally {
       setIsShipmentPrinting(false);
+    }
+  };
+
+  // Pending Tracking checkbox handlers
+  const handlePendingTrackingSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(paginatedPendingTrackingOrders.map(order => order.id));
+      setSelectedPendingTrackingOrders(allIds);
+    } else {
+      setSelectedPendingTrackingOrders(new Set());
+    }
+  };
+
+  const handlePendingTrackingSelectOrder = (orderId: string, checked: boolean) => {
+    const newSelection = new Set(selectedPendingTrackingOrders);
+    if (checked) {
+      newSelection.add(orderId);
+    } else {
+      newSelection.delete(orderId);
+    }
+    setSelectedPendingTrackingOrders(newSelection);
+  };
+
+  const isPendingTrackingAllSelected = paginatedPendingTrackingOrders.length > 0 && paginatedPendingTrackingOrders.every(order => selectedPendingTrackingOrders.has(order.id));
+  const isPendingTrackingSomeSelected = selectedPendingTrackingOrders.size > 0;
+
+  // Bulk Print waybill action for Pending Tracking tab
+  const handlePendingTrackingBulkPrint = async () => {
+    if (selectedPendingTrackingOrders.size === 0) {
+      toast({
+        title: 'No orders selected',
+        description: 'Please select orders to print waybills.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const selectedOrdersList = paginatedPendingTrackingOrders.filter(order => selectedPendingTrackingOrders.has(order.id));
+    const ninjavanOrders = selectedOrdersList.filter(
+      order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
+    );
+
+    if (ninjavanOrders.length === 0) {
+      toast({
+        title: 'No Ninjavan orders',
+        description: 'Selected orders do not have Ninjavan tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      toast({
+        title: 'No tracking numbers',
+        description: 'Selected orders do not have tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsPendingTrackingPrinting(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ trackingNumbers }),
+        }
+      );
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch waybill');
+        } else {
+          throw new Error(`Failed to fetch waybill: ${response.status}`);
+        }
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf')) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+
+        toast({
+          title: 'Waybill Generated',
+          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
+        });
+      } else {
+        const text = await response.text();
+        console.error('Unexpected response:', text);
+        throw new Error('Unexpected response format from server');
+      }
+    } catch (error: any) {
+      console.error('Error fetching waybill:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate waybill. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsPendingTrackingPrinting(false);
+    }
+  };
+
+  // Bulk update for Pending Tracking - update by tracking numbers
+  const handleBulkTrackingUpdate = async () => {
+    if (!bulkDate) {
+      toast({
+        title: 'Date Required',
+        description: 'Please select a date.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!bulkTrackingList.trim()) {
+      toast({
+        title: 'Tracking Numbers Required',
+        description: 'Please enter tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Parse tracking numbers (split by newlines, commas, or spaces)
+    const trackingNumbers = bulkTrackingList
+      .split(/[\n,\s]+/)
+      .map(t => t.trim())
+      .filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      toast({
+        title: 'No Tracking Numbers',
+        description: 'Please enter valid tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsBulkUpdating(true);
+
+    try {
+      // Find orders by tracking numbers
+      const ordersToUpdate = orders.filter(order =>
+        order.noTracking && trackingNumbers.includes(order.noTracking)
+      );
+
+      if (ordersToUpdate.length === 0) {
+        toast({
+          title: 'No Matching Orders',
+          description: 'No orders found with the provided tracking numbers.',
+          variant: 'destructive',
+        });
+        setIsBulkUpdating(false);
+        return;
+      }
+
+      let updateData: any;
+      if (bulkStatus === 'Success') {
+        // Success: SEO='Successfull Delivery', date_success=date, delivery_status stays 'Shipped'
+        updateData = {
+          seo: 'Successfull Delivery',
+          date_success: bulkDate,
+          delivery_status: 'Shipped',
+          updated_at: new Date().toISOString(),
+        };
+      } else {
+        // Return: SEO='Return', date_return=date, delivery_status='Return'
+        updateData = {
+          seo: 'Return',
+          date_return: bulkDate,
+          delivery_status: 'Return',
+          updated_at: new Date().toISOString(),
+        };
+      }
+
+      const updatePromises = ordersToUpdate.map(order =>
+        supabase
+          .from('customer_orders')
+          .update(updateData)
+          .eq('id', order.id)
+      );
+
+      await Promise.all(updatePromises);
+
+      toast({
+        title: 'Orders Updated',
+        description: `${ordersToUpdate.length} order(s) have been updated to ${bulkStatus}.`,
+      });
+
+      // Clear form and refresh data
+      setBulkTrackingList('');
+      setBulkDate('');
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update orders. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBulkUpdating(false);
     }
   };
 
@@ -1313,6 +1634,7 @@ const Logistics: React.FC = () => {
                     <th>Jenis Customer</th>
                     <th>Negeri</th>
                     <th>Alamat</th>
+                    <th>SEO</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1369,12 +1691,17 @@ const Logistics: React.FC = () => {
                             </p>
                           </div>
                         </td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
+                            {order.seo || '-'}
+                          </span>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={17}
+                        colSpan={18}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No shipped orders found.
@@ -1598,6 +1925,7 @@ const Logistics: React.FC = () => {
                     <th>Jenis Customer</th>
                     <th>Negeri</th>
                     <th>Alamat</th>
+                    <th>SEO</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1654,12 +1982,17 @@ const Logistics: React.FC = () => {
                             </p>
                           </div>
                         </td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
+                            {order.seo || '-'}
+                          </span>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={17}
+                        colSpan={18}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No return orders found.
@@ -1715,6 +2048,352 @@ const Logistics: React.FC = () => {
                     size="sm"
                     onClick={() => setReturnCurrentPage(prev => Math.min(returnTotalPages, prev + 1))}
                     disabled={returnCurrentPage === returnTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Pending Tracking Tab */}
+        <TabsContent value="pending-tracking" className="space-y-6">
+          {/* Section Title */}
+          <h2 className="text-xl font-semibold text-foreground">Pending Tracking Management</h2>
+
+          {/* Pending Tracking Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="stat-card flex items-center gap-3">
+              <ClipboardList className="w-5 h-5 text-warning" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{pendingTrackingCounts.totalOrder}</p>
+                <p className="text-sm text-muted-foreground">Total Order</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Package className="w-5 h-5 text-success" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{pendingTrackingCounts.cashOrder}</p>
+                <p className="text-sm text-muted-foreground">Total Order Cash</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Truck className="w-5 h-5 text-info" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{pendingTrackingCounts.codOrder}</p>
+                <p className="text-sm text-muted-foreground">Total Order COD</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bulk Update Form */}
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Bulk Update Tracking</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Status</label>
+                <Select value={bulkStatus} onValueChange={(value: 'Success' | 'Return') => setBulkStatus(value)}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Select Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Success">Success</SelectItem>
+                    <SelectItem value="Return">Return</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Date</label>
+                <Input
+                  type="date"
+                  value={bulkDate}
+                  onChange={(e) => setBulkDate(e.target.value)}
+                  className="bg-background"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-foreground mb-1.5">Tracking Numbers</label>
+                <Textarea
+                  placeholder="Paste tracking numbers here (one per line, comma, or space separated)"
+                  value={bulkTrackingList}
+                  onChange={(e) => setBulkTrackingList(e.target.value)}
+                  className="bg-background resize-none"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end mt-4">
+              <Button
+                onClick={handleBulkTrackingUpdate}
+                disabled={isBulkUpdating}
+                className="gap-2"
+              >
+                {isBulkUpdating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search... (use + to combine, e.g. CASH+Facebook)"
+                  value={pendingTrackingSearch}
+                  onChange={(e) => { setPendingTrackingSearch(e.target.value); handlePendingTrackingFilterChange(); }}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={pendingTrackingStartDate}
+                  onChange={(e) => { setPendingTrackingStartDate(e.target.value); handlePendingTrackingFilterChange(); }}
+                  className="w-40"
+                  placeholder="Start Date"
+                />
+                <Input
+                  type="date"
+                  value={pendingTrackingEndDate}
+                  onChange={(e) => { setPendingTrackingEndDate(e.target.value); handlePendingTrackingFilterChange(); }}
+                  className="w-40"
+                  placeholder="End Date"
+                />
+              </div>
+            </div>
+
+            {/* Additional Filters Row */}
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Platform Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Platform:</span>
+                <Select value={pendingTrackingPlatformFilter} onValueChange={(value) => { setPendingTrackingPlatformFilter(value); handlePendingTrackingFilterChange(); }}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PLATFORM_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Cara Bayaran Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Cara Bayaran:</span>
+                <Select value={pendingTrackingCaraBayaranFilter} onValueChange={(value) => { setPendingTrackingCaraBayaranFilter(value); handlePendingTrackingFilterChange(); }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARA_BAYARAN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Page Size Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <Select value={pendingTrackingPageSize.toString()} onValueChange={(value) => { setPendingTrackingPageSize(Number(value)); setPendingTrackingCurrentPage(1); }}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handlePendingTrackingBulkPrint}
+                  disabled={!isPendingTrackingSomeSelected || isPendingTrackingPrinting}
+                  className="gap-2"
+                >
+                  {isPendingTrackingPrinting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4" />
+                  )}
+                  Print ({selectedPendingTrackingOrders.size})
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Tracking Table */}
+          <div className="form-section overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="w-10">
+                      <Checkbox
+                        checked={isPendingTrackingAllSelected}
+                        onCheckedChange={handlePendingTrackingSelectAll}
+                        aria-label="Select all"
+                      />
+                    </th>
+                    <th>No</th>
+                    <th>Tarikh Order</th>
+                    <th>ID Staff</th>
+                    <th>Nama Pelanggan</th>
+                    <th>Phone</th>
+                    <th>Produk</th>
+                    <th>Unit</th>
+                    <th>Total Sales</th>
+                    <th>Cara Bayaran</th>
+                    <th>Delivery Status</th>
+                    <th>SEO</th>
+                    <th>Tracking Number</th>
+                    <th>Jenis Platform</th>
+                    <th>Jenis Customer</th>
+                    <th>Negeri</th>
+                    <th>Alamat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedPendingTrackingOrders.length > 0 ? (
+                    paginatedPendingTrackingOrders.map((order, index) => (
+                      <tr key={order.id}>
+                        <td>
+                          <Checkbox
+                            checked={selectedPendingTrackingOrders.has(order.id)}
+                            onCheckedChange={(checked) => handlePendingTrackingSelectOrder(order.id, checked as boolean)}
+                            aria-label={`Select order ${index + 1}`}
+                          />
+                        </td>
+                        <td>{(pendingTrackingCurrentPage - 1) * pendingTrackingPageSize + index + 1}</td>
+                        <td>{order.dateOrder || '-'}</td>
+                        <td>{order.marketerIdStaff || '-'}</td>
+                        <td>{order.marketerName || '-'}</td>
+                        <td>{order.noPhone || '-'}</td>
+                        <td>
+                          {(() => {
+                            const bundle = bundles.find(b => b.name === order.produk);
+                            if (bundle && bundle.productName) {
+                              return `${bundle.name} + ${bundle.productName}`;
+                            }
+                            return order.produk || '-';
+                          })()}
+                        </td>
+                        <td>{order.kuantiti || 1}</td>
+                        <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
+                        <td>
+                          {order.caraBayaran === 'CASH' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              CASH
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">{order.caraBayaran || '-'}</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
+                            {order.deliveryStatus || 'Shipped'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
+                            {order.seo || '-'}
+                          </span>
+                        </td>
+                        <td>{order.noTracking || '-'}</td>
+                        <td>{order.jenisPlatform || '-'}</td>
+                        <td>{order.jenisCustomer || '-'}</td>
+                        <td>{order.negeri || '-'}</td>
+                        <td>
+                          <div className="max-w-xs">
+                            <p className="text-sm truncate">{order.alamat}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.poskod} {order.bandar}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={17}
+                        className="text-center py-12 text-muted-foreground"
+                      >
+                        No pending tracking orders found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {pendingTrackingTotalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(pendingTrackingCurrentPage - 1) * pendingTrackingPageSize + 1} to {Math.min(pendingTrackingCurrentPage * pendingTrackingPageSize, pendingTrackingOrders.length)} of {pendingTrackingOrders.length} entries
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPendingTrackingCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={pendingTrackingCurrentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pendingTrackingTotalPages) }, (_, i) => {
+                      let pageNum;
+                      if (pendingTrackingTotalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pendingTrackingCurrentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (pendingTrackingCurrentPage >= pendingTrackingTotalPages - 2) {
+                        pageNum = pendingTrackingTotalPages - 4 + i;
+                      } else {
+                        pageNum = pendingTrackingCurrentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pendingTrackingCurrentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setPendingTrackingCurrentPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPendingTrackingCurrentPage(prev => Math.min(pendingTrackingTotalPages, prev + 1))}
+                    disabled={pendingTrackingCurrentPage === pendingTrackingTotalPages}
                   >
                     Next
                   </Button>

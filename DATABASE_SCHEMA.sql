@@ -131,6 +131,8 @@ CREATE TABLE public.customer_orders (
   receipt_image_url text,                    -- Receipt image URL (Vercel Blob)
   waybill_url text,                          -- Waybill PDF URL (Vercel Blob) - for Shopee/Tiktok
   date_return date,                          -- Return date (when delivery_status = 'Return')
+  seo text,                                  -- SEO status: null, 'Shipped', 'Successfull Delivery', 'Return'
+  date_success date,                         -- Success date (when SEO = 'Successfull Delivery')
   CONSTRAINT customer_orders_pkey PRIMARY KEY (id)
 );
 

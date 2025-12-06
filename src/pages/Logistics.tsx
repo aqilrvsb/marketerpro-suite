@@ -316,11 +316,12 @@ const Logistics: React.FC = () => {
     return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
   });
 
-  // Filter orders for Pending Tracking tab - Shipped AND SEO != 'Successfull Delivery', filter by date_order
+  // Filter orders for Pending Tracking tab - Shipped AND SEO != 'Successfull Delivery' AND COD only, filter by date_order
   const pendingTrackingOrders = orders.filter((order) => {
     const isShipped = order.deliveryStatus === 'Shipped';
     const seoNotSuccess = order.seo !== 'Successfull Delivery';
-    if (!isShipped || !seoNotSuccess) return false;
+    const isCOD = order.caraBayaran === 'COD';
+    if (!isShipped || !seoNotSuccess || !isCOD) return false;
 
     // Advanced search with + for combining filters
     let matchesSearch = true;
@@ -430,11 +431,11 @@ const Logistics: React.FC = () => {
     codReturn: returnOrders.filter((o) => o.caraBayaran === 'COD').length,
   };
 
-  // Pending Tracking tab counts
+  // Pending Tracking tab counts (COD only)
   const pendingTrackingCounts = {
     totalOrder: pendingTrackingOrders.length,
-    cashOrder: pendingTrackingOrders.filter((o) => o.caraBayaran === 'CASH').length,
     codOrder: pendingTrackingOrders.filter((o) => o.caraBayaran === 'COD').length,
+    totalSales: pendingTrackingOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
   };
 
   // Process order - update delivery_status to Shipped and set date_processed
@@ -1090,10 +1091,10 @@ const Logistics: React.FC = () => {
 
       let updateData: any;
       if (bulkStatus === 'Success') {
-        // Success: SEO='Successfull Delivery', date_success=date, delivery_status stays 'Shipped'
+        // Success: SEO='Successfull Delivery', tarikh_bayaran=date, delivery_status stays 'Shipped'
         updateData = {
           seo: 'Successfull Delivery',
-          date_success: bulkDate,
+          tarikh_bayaran: bulkDate,
           delivery_status: 'Shipped',
           updated_at: new Date().toISOString(),
         };
@@ -2062,7 +2063,7 @@ const Logistics: React.FC = () => {
           {/* Section Title */}
           <h2 className="text-xl font-semibold text-foreground">Pending Tracking Management</h2>
 
-          {/* Pending Tracking Stats */}
+          {/* Pending Tracking Stats (COD only) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="stat-card flex items-center gap-3">
               <ClipboardList className="w-5 h-5 text-warning" />
@@ -2072,17 +2073,17 @@ const Logistics: React.FC = () => {
               </div>
             </div>
             <div className="stat-card flex items-center gap-3">
-              <Package className="w-5 h-5 text-success" />
-              <div>
-                <p className="text-2xl font-bold text-foreground">{pendingTrackingCounts.cashOrder}</p>
-                <p className="text-sm text-muted-foreground">Total Order Cash</p>
-              </div>
-            </div>
-            <div className="stat-card flex items-center gap-3">
               <Truck className="w-5 h-5 text-info" />
               <div>
                 <p className="text-2xl font-bold text-foreground">{pendingTrackingCounts.codOrder}</p>
                 <p className="text-sm text-muted-foreground">Total Order COD</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Package className="w-5 h-5 text-success" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">RM {pendingTrackingCounts.totalSales.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">Total Sales</p>
               </div>
             </div>
           </div>

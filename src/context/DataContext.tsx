@@ -13,7 +13,7 @@ interface CustomerOrder {
   kosProduk: number; profit: number; hargaJualanAgen: number; tarikhTempahan: string;
   kurier: string; noTracking: string; statusParcel: string;
   notaStaff: string; beratParcel: number; createdAt: string;
-  deliveryStatus: string; dateOrder: string; dateProcessed: string; dateReturn: string; dateSuccess: string;
+  deliveryStatus: string; dateOrder: string; dateProcessed: string; dateReturn: string;
   jenisPlatform: string; jenisCustomer: string; caraBayaran: string;
   tarikhBayaran: string; jenisBayaran: string; bank: string; receiptImageUrl: string; waybillUrl: string;
   seo: string;
@@ -63,7 +63,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     kurier: d.kurier || '', noTracking: d.no_tracking || '', statusParcel: d.status_parcel || 'Pending',
     notaStaff: d.nota_staff || '', beratParcel: d.berat_parcel || 0, createdAt: d.created_at,
     deliveryStatus: d.delivery_status || 'Pending', dateOrder: d.date_order || '', dateProcessed: d.date_processed || '',
-    dateReturn: d.date_return || '', dateSuccess: d.date_success || '',
+    dateReturn: d.date_return || '',
     jenisPlatform: d.jenis_platform || '', jenisCustomer: d.jenis_customer || '', caraBayaran: d.cara_bayaran || '',
     tarikhBayaran: d.tarikh_bayaran || '', jenisBayaran: d.jenis_bayaran || '', bank: d.bank || '', receiptImageUrl: d.receipt_image_url || '', waybillUrl: d.waybill_url || '',
     seo: d.seo || '',

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '@/context/DataContext';
+import { useBundles } from '@/context/BundleContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ const PAGE_SIZE_OPTIONS = [10, 50, 100];
 
 const Logistics: React.FC = () => {
   const { orders, updateOrder, refreshData } = useData();
+  const { bundles } = useBundles();
   const location = useLocation();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -810,9 +812,25 @@ const Logistics: React.FC = () => {
                         <td>{order.dateOrder || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
-                        <td>{order.produk || '-'}</td>
+                        <td>
+                          {(() => {
+                            const bundle = bundles.find(b => b.name === order.produk);
+                            if (bundle && bundle.productName) {
+                              return `${bundle.name} + ${bundle.productName}`;
+                            }
+                            return order.produk || '-';
+                          })()}
+                        </td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
-                        <td>{order.caraBayaran || '-'}</td>
+                        <td>
+                          {order.caraBayaran === 'CASH' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              CASH
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">{order.caraBayaran || '-'}</span>
+                          )}
+                        </td>
                         <td>
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-warning/20 text-warning">
                             {order.deliveryStatus || 'Pending'}
@@ -1096,9 +1114,25 @@ const Logistics: React.FC = () => {
                         <td>{order.dateOrder || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
-                        <td>{order.produk || '-'}</td>
+                        <td>
+                          {(() => {
+                            const bundle = bundles.find(b => b.name === order.produk);
+                            if (bundle && bundle.productName) {
+                              return `${bundle.name} + ${bundle.productName}`;
+                            }
+                            return order.produk || '-';
+                          })()}
+                        </td>
                         <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
-                        <td>{order.caraBayaran || '-'}</td>
+                        <td>
+                          {order.caraBayaran === 'CASH' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              CASH
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">{order.caraBayaran || '-'}</span>
+                          )}
+                        </td>
                         <td>
                           <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/20 text-primary">
                             {order.deliveryStatus || 'Shipped'}

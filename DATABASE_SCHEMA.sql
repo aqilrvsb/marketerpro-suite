@@ -41,6 +41,27 @@ CREATE TABLE public.user_roles (
 );
 
 -- =====================================================
+-- TABLE: device_setting (WhatsApp device configuration)
+-- =====================================================
+-- Used for Whacenter integration - allows marketers to connect WhatsApp
+CREATE TABLE public.device_setting (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,                  -- Reference to profiles.id
+  device_id text,                         -- Whacenter device ID (returned after addDevice)
+  instance text,                          -- Instance ID (same as device_id)
+  webhook_id text,                        -- Unique webhook identifier
+  provider text DEFAULT 'whacenter'::text,-- Provider name (whacenter)
+  api_key text,                           -- Whacenter API key
+  id_device text,                         -- Custom device name (DFR_{idstaff})
+  phone_number text,                      -- WhatsApp phone number (format: 60123456789)
+  status_wa text DEFAULT 'disconnected'::text, -- connected, disconnected
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT device_setting_pkey PRIMARY KEY (id),
+  CONSTRAINT device_setting_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
+
+-- =====================================================
 -- TABLE: products (Product inventory)
 -- =====================================================
 CREATE TABLE public.products (
@@ -146,10 +167,11 @@ CREATE TABLE public.prospects (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   nama_prospek text NOT NULL,                -- Prospect name
   no_telefon text NOT NULL,                  -- Phone number
-  niche text NOT NULL,                       -- Niche/category
-  jenis_prospek text NOT NULL,               -- Prospect type
+  niche text NOT NULL,                       -- Niche/category (product name)
+  jenis_prospek text NOT NULL,               -- Prospect type: NP, EP
   tarikh_phone_number date,                  -- Date of phone number entry
-  admin_id_staff text,                       -- Staff ID who created it
+  admin_id_staff text,                       -- Admin Staff ID who created it
+  marketer_id_staff text,                    -- Marketer Staff ID who owns this prospect
   created_by uuid,                           -- Reference to profiles.id
   status_closed text,                        -- Closed status
   price_closed numeric,                      -- Closed price
@@ -301,3 +323,10 @@ CREATE TABLE public.ninjavan_tokens (
 --     - Most dashboards use date_order for filtering
 --     - Default range: Current month (start to end)
 --     - Top 10 leaderboard fetches ALL orders (not filtered by marketer)
+--
+-- 11. WhatsApp Integration (Whacenter):
+--     - API URL: https://api.whacenter.com/api
+--     - Default API Key: d44ac50f-0bd8-4ed0-b85f-55465e08d7cf
+--     - Endpoints: addDevice, getStatus, getQr
+--     - Flow: Create device -> Generate (addDevice) -> Scan QR -> Connected
+--     - Only marketers can configure WhatsApp devices in Profile page

@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2 } from 'lucide-react';
+import { Search, Package, Truck, CheckCircle2, Clock, XCircle, Printer, Send, Loader2, RotateCcw } from 'lucide-react';
 import { STATUS_OPTIONS, KURIER_OPTIONS } from '@/types';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,11 +62,22 @@ const Logistics: React.FC = () => {
   const [shipmentCaraBayaranFilter, setShipmentCaraBayaranFilter] = useState('All');
   const [shipmentSearch, setShipmentSearch] = useState('');
 
+  // Return tab states
+  const [returnStartDate, setReturnStartDate] = useState('');
+  const [returnEndDate, setReturnEndDate] = useState('');
+  const [returnPageSize, setReturnPageSize] = useState(10);
+  const [returnCurrentPage, setReturnCurrentPage] = useState(1);
+  const [selectedReturnOrders, setSelectedReturnOrders] = useState<Set<string>>(new Set());
+  const [returnPlatformFilter, setReturnPlatformFilter] = useState('All');
+  const [returnCaraBayaranFilter, setReturnCaraBayaranFilter] = useState('All');
+  const [returnSearch, setReturnSearch] = useState('');
+
   // Loading states
   const [isShipping, setIsShipping] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [isPendingAction, setIsPendingAction] = useState(false);
   const [isShipmentPrinting, setIsShipmentPrinting] = useState(false);
+  const [isReturnPrinting, setIsReturnPrinting] = useState(false);
 
   // Determine current tab from URL path
   const getTabFromPath = () => {
@@ -76,6 +87,7 @@ const Logistics: React.FC = () => {
     if (location.pathname.includes('/logistics/stock-out')) return 'stock-out';
     if (location.pathname.includes('/logistics/order')) return 'order';
     if (location.pathname.includes('/logistics/shipment')) return 'shipment';
+    if (location.pathname.includes('/logistics/return')) return 'return';
     return 'order';
   };
 
@@ -86,8 +98,10 @@ const Logistics: React.FC = () => {
     // Reset selections when changing tabs
     setSelectedOrders(new Set());
     setSelectedShipmentOrders(new Set());
+    setSelectedReturnOrders(new Set());
     setCurrentPage(1);
     setShipmentCurrentPage(1);
+    setReturnCurrentPage(1);
   };
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -217,6 +231,70 @@ const Logistics: React.FC = () => {
     return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
   });
 
+  // Filter orders for Return tab - only Return status, filter by date_return
+  const returnOrders = orders.filter((order) => {
+    const isReturn = order.deliveryStatus === 'Return';
+    if (!isReturn) return false;
+
+    // Advanced search with + for combining filters (e.g., "CASH+Facebook")
+    let matchesSearch = true;
+    if (returnSearch.trim()) {
+      const searchTerms = returnSearch.toLowerCase().split('+').map(s => s.trim()).filter(Boolean);
+
+      if (searchTerms.length > 1) {
+        // Multiple terms with + means ALL must match (AND logic)
+        matchesSearch = searchTerms.every(term => {
+          return (
+            order.marketerName.toLowerCase().includes(term) ||
+            order.noPhone.toLowerCase().includes(term) ||
+            order.alamat.toLowerCase().includes(term) ||
+            (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+            (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+            (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+            (order.produk && order.produk.toLowerCase().includes(term)) ||
+            (order.idstaff && order.idstaff.toLowerCase().includes(term))
+          );
+        });
+      } else {
+        // Single term - normal search (OR logic)
+        const term = searchTerms[0] || '';
+        matchesSearch =
+          order.marketerName.toLowerCase().includes(term) ||
+          order.noPhone.toLowerCase().includes(term) ||
+          order.alamat.toLowerCase().includes(term) ||
+          (order.caraBayaran && order.caraBayaran.toLowerCase().includes(term)) ||
+          (order.jenisPlatform && order.jenisPlatform.toLowerCase().includes(term)) ||
+          (order.negeri && order.negeri.toLowerCase().includes(term)) ||
+          (order.produk && order.produk.toLowerCase().includes(term)) ||
+          (order.idstaff && order.idstaff.toLowerCase().includes(term));
+      }
+    }
+
+    // Platform filter
+    const matchesPlatform = returnPlatformFilter === 'All' || order.jenisPlatform === returnPlatformFilter;
+
+    // Cara Bayaran filter
+    const matchesCaraBayaran = returnCaraBayaranFilter === 'All' || order.caraBayaran === returnCaraBayaranFilter;
+
+    // Date filter by date_return
+    let matchesDate = true;
+    if (returnStartDate || returnEndDate) {
+      const dateReturn = order.dateReturn ? new Date(order.dateReturn) : null;
+      if (dateReturn) {
+        if (returnStartDate) {
+          matchesDate = matchesDate && dateReturn >= new Date(returnStartDate);
+        }
+        if (returnEndDate) {
+          matchesDate = matchesDate && dateReturn <= new Date(returnEndDate);
+        }
+      } else {
+        matchesDate = false;
+      }
+    }
+
+    return matchesSearch && matchesDate && matchesPlatform && matchesCaraBayaran;
+  });
+
   // Pagination logic for Order tab
   const totalPages = Math.ceil(pendingOrders.length / pageSize);
   const paginatedOrders = pendingOrders.slice(
@@ -231,6 +309,13 @@ const Logistics: React.FC = () => {
     shipmentCurrentPage * shipmentPageSize
   );
 
+  // Pagination logic for Return tab
+  const returnTotalPages = Math.ceil(returnOrders.length / returnPageSize);
+  const paginatedReturnOrders = returnOrders.slice(
+    (returnCurrentPage - 1) * returnPageSize,
+    returnCurrentPage * returnPageSize
+  );
+
   // Order tab counts - Pending orders
   const orderCounts = {
     totalPending: pendingOrders.length,
@@ -243,6 +328,13 @@ const Logistics: React.FC = () => {
     totalShipped: shippedOrders.length,
     cashShipped: shippedOrders.filter((o) => o.caraBayaran === 'CASH').length,
     codShipped: shippedOrders.filter((o) => o.caraBayaran === 'COD').length,
+  };
+
+  // Return tab counts
+  const returnCounts = {
+    totalReturn: returnOrders.length,
+    cashReturn: returnOrders.filter((o) => o.caraBayaran === 'CASH').length,
+    codReturn: returnOrders.filter((o) => o.caraBayaran === 'COD').length,
   };
 
   // Process order - update delivery_status to Shipped and set date_processed
@@ -442,6 +534,125 @@ const Logistics: React.FC = () => {
   const handleShipmentFilterChange = () => {
     setShipmentCurrentPage(1);
     setSelectedShipmentOrders(new Set());
+  };
+
+  // Reset page when return filters change
+  const handleReturnFilterChange = () => {
+    setReturnCurrentPage(1);
+    setSelectedReturnOrders(new Set());
+  };
+
+  // Return checkbox handlers
+  const handleReturnSelectAll = (checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(paginatedReturnOrders.map(order => order.id));
+      setSelectedReturnOrders(allIds);
+    } else {
+      setSelectedReturnOrders(new Set());
+    }
+  };
+
+  const handleReturnSelectOrder = (orderId: string, checked: boolean) => {
+    const newSelection = new Set(selectedReturnOrders);
+    if (checked) {
+      newSelection.add(orderId);
+    } else {
+      newSelection.delete(orderId);
+    }
+    setSelectedReturnOrders(newSelection);
+  };
+
+  const isReturnAllSelected = paginatedReturnOrders.length > 0 && paginatedReturnOrders.every(order => selectedReturnOrders.has(order.id));
+  const isReturnSomeSelected = selectedReturnOrders.size > 0;
+
+  // Bulk Print waybill action for Return tab
+  const handleReturnBulkPrint = async () => {
+    if (selectedReturnOrders.size === 0) {
+      toast({
+        title: 'No orders selected',
+        description: 'Please select orders to print waybills.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Get tracking numbers for selected orders (only Ninjavan orders)
+    const selectedOrdersList = paginatedReturnOrders.filter(order => selectedReturnOrders.has(order.id));
+    const ninjavanOrders = selectedOrdersList.filter(
+      order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
+    );
+
+    if (ninjavanOrders.length === 0) {
+      toast({
+        title: 'No Ninjavan orders',
+        description: 'Selected orders do not have Ninjavan tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
+
+    if (trackingNumbers.length === 0) {
+      toast({
+        title: 'No tracking numbers',
+        description: 'Selected orders do not have tracking numbers.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsReturnPrinting(true);
+
+    try {
+      // Call Ninjavan waybill function - returns PDF directly
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ trackingNumbers }),
+        }
+      );
+
+      if (!response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch waybill');
+        } else {
+          throw new Error(`Failed to fetch waybill: ${response.status}`);
+        }
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf')) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+
+        toast({
+          title: 'Waybill Generated',
+          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
+        });
+      } else {
+        const text = await response.text();
+        console.error('Unexpected response:', text);
+        throw new Error('Unexpected response format from server');
+      }
+    } catch (error: any) {
+      console.error('Error fetching waybill:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to generate waybill. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsReturnPrinting(false);
+    }
   };
 
   // Shipment checkbox handlers
@@ -783,6 +994,7 @@ const Logistics: React.FC = () => {
                     </th>
                     <th>No</th>
                     <th>Tarikh Order</th>
+                    <th>ID Staff</th>
                     <th>Nama Pelanggan</th>
                     <th>Phone</th>
                     <th>Produk</th>
@@ -811,6 +1023,7 @@ const Logistics: React.FC = () => {
                         </td>
                         <td>{(currentPage - 1) * pageSize + index + 1}</td>
                         <td>{order.dateOrder || '-'}</td>
+                        <td>{order.idstaff || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>
@@ -863,7 +1076,7 @@ const Logistics: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={16}
+                        colSpan={17}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No pending orders found.
@@ -1087,6 +1300,7 @@ const Logistics: React.FC = () => {
                     <th>No</th>
                     <th>Tarikh Process</th>
                     <th>Tarikh Order</th>
+                    <th>ID Staff</th>
                     <th>Nama Pelanggan</th>
                     <th>Phone</th>
                     <th>Produk</th>
@@ -1115,6 +1329,7 @@ const Logistics: React.FC = () => {
                         <td>{(shipmentCurrentPage - 1) * shipmentPageSize + index + 1}</td>
                         <td>{order.dateProcessed || '-'}</td>
                         <td>{order.dateOrder || '-'}</td>
+                        <td>{order.idstaff || '-'}</td>
                         <td>{order.marketerName || '-'}</td>
                         <td>{order.noPhone || '-'}</td>
                         <td>
@@ -1159,7 +1374,7 @@ const Logistics: React.FC = () => {
                   ) : (
                     <tr>
                       <td
-                        colSpan={16}
+                        colSpan={17}
                         className="text-center py-12 text-muted-foreground"
                       >
                         No shipped orders found.
@@ -1215,6 +1430,291 @@ const Logistics: React.FC = () => {
                     size="sm"
                     onClick={() => setShipmentCurrentPage(prev => Math.min(shipmentTotalPages, prev + 1))}
                     disabled={shipmentCurrentPage === shipmentTotalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Return Tab - Return orders */}
+        <TabsContent value="return" className="space-y-6">
+          {/* Section Title */}
+          <h2 className="text-xl font-semibold text-foreground">Return Management</h2>
+
+          {/* Return Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="stat-card flex items-center gap-3">
+              <RotateCcw className="w-5 h-5 text-destructive" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{returnCounts.totalReturn}</p>
+                <p className="text-sm text-muted-foreground">Total Return</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Package className="w-5 h-5 text-success" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{returnCounts.cashReturn}</p>
+                <p className="text-sm text-muted-foreground">Total Cash Return</p>
+              </div>
+            </div>
+            <div className="stat-card flex items-center gap-3">
+              <Truck className="w-5 h-5 text-info" />
+              <div>
+                <p className="text-2xl font-bold text-foreground">{returnCounts.codReturn}</p>
+                <p className="text-sm text-muted-foreground">Total COD Return</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search... (use + to combine, e.g. CASH+Facebook)"
+                  value={returnSearch}
+                  onChange={(e) => { setReturnSearch(e.target.value); handleReturnFilterChange(); }}
+                  className="pl-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={returnStartDate}
+                  onChange={(e) => { setReturnStartDate(e.target.value); handleReturnFilterChange(); }}
+                  className="w-40"
+                  placeholder="Start Date"
+                />
+                <Input
+                  type="date"
+                  value={returnEndDate}
+                  onChange={(e) => { setReturnEndDate(e.target.value); handleReturnFilterChange(); }}
+                  className="w-40"
+                  placeholder="End Date"
+                />
+              </div>
+            </div>
+
+            {/* Additional Filters Row */}
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Platform Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Platform:</span>
+                <Select value={returnPlatformFilter} onValueChange={(value) => { setReturnPlatformFilter(value); handleReturnFilterChange(); }}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PLATFORM_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Cara Bayaran Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Cara Bayaran:</span>
+                <Select value={returnCaraBayaranFilter} onValueChange={(value) => { setReturnCaraBayaranFilter(value); handleReturnFilterChange(); }}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="All" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CARA_BAYARAN_OPTIONS.map((opt) => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Page Size Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <Select value={returnPageSize.toString()} onValueChange={(value) => { setReturnPageSize(Number(value)); setReturnCurrentPage(1); }}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <SelectItem key={size} value={size.toString()}>{size}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">entries</span>
+              </div>
+
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleReturnBulkPrint}
+                  disabled={!isReturnSomeSelected || isReturnPrinting}
+                  className="gap-2"
+                >
+                  {isReturnPrinting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Printer className="w-4 h-4" />
+                  )}
+                  Print ({selectedReturnOrders.size})
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Return Table */}
+          <div className="form-section overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th className="w-10">
+                      <Checkbox
+                        checked={isReturnAllSelected}
+                        onCheckedChange={handleReturnSelectAll}
+                        aria-label="Select all"
+                      />
+                    </th>
+                    <th>No</th>
+                    <th>Tarikh Return</th>
+                    <th>Tarikh Order</th>
+                    <th>ID Staff</th>
+                    <th>Nama Pelanggan</th>
+                    <th>Phone</th>
+                    <th>Produk</th>
+                    <th>Unit</th>
+                    <th>Total Sales</th>
+                    <th>Cara Bayaran</th>
+                    <th>Delivery Status</th>
+                    <th>Tracking Number</th>
+                    <th>Jenis Platform</th>
+                    <th>Jenis Customer</th>
+                    <th>Negeri</th>
+                    <th>Alamat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedReturnOrders.length > 0 ? (
+                    paginatedReturnOrders.map((order, index) => (
+                      <tr key={order.id}>
+                        <td>
+                          <Checkbox
+                            checked={selectedReturnOrders.has(order.id)}
+                            onCheckedChange={(checked) => handleReturnSelectOrder(order.id, checked as boolean)}
+                            aria-label={`Select order ${index + 1}`}
+                          />
+                        </td>
+                        <td>{(returnCurrentPage - 1) * returnPageSize + index + 1}</td>
+                        <td>{order.dateReturn || '-'}</td>
+                        <td>{order.dateOrder || '-'}</td>
+                        <td>{order.idstaff || '-'}</td>
+                        <td>{order.marketerName || '-'}</td>
+                        <td>{order.noPhone || '-'}</td>
+                        <td>
+                          {(() => {
+                            const bundle = bundles.find(b => b.name === order.produk);
+                            if (bundle && bundle.productName) {
+                              return `${bundle.name} + ${bundle.productName}`;
+                            }
+                            return order.produk || '-';
+                          })()}
+                        </td>
+                        <td>{order.kuantiti || 1}</td>
+                        <td>RM {order.hargaJualanSebenar?.toFixed(2) || '0.00'}</td>
+                        <td>
+                          {order.caraBayaran === 'CASH' ? (
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">
+                              CASH
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">{order.caraBayaran || '-'}</span>
+                          )}
+                        </td>
+                        <td>
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-destructive/20 text-destructive">
+                            {order.deliveryStatus || 'Return'}
+                          </span>
+                        </td>
+                        <td>{order.noTracking || '-'}</td>
+                        <td>{order.jenisPlatform || '-'}</td>
+                        <td>{order.jenisCustomer || '-'}</td>
+                        <td>{order.negeri || '-'}</td>
+                        <td>
+                          <div className="max-w-xs">
+                            <p className="text-sm truncate">{order.alamat}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {order.poskod} {order.bandar}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={17}
+                        className="text-center py-12 text-muted-foreground"
+                      >
+                        No return orders found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {returnTotalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-border">
+                <div className="text-sm text-muted-foreground">
+                  Showing {(returnCurrentPage - 1) * returnPageSize + 1} to {Math.min(returnCurrentPage * returnPageSize, returnOrders.length)} of {returnOrders.length} entries
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReturnCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={returnCurrentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, returnTotalPages) }, (_, i) => {
+                      let pageNum;
+                      if (returnTotalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (returnCurrentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (returnCurrentPage >= returnTotalPages - 2) {
+                        pageNum = returnTotalPages - 4 + i;
+                      } else {
+                        pageNum = returnCurrentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={returnCurrentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setReturnCurrentPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setReturnCurrentPage(prev => Math.min(returnTotalPages, prev + 1))}
+                    disabled={returnCurrentPage === returnTotalPages}
                   >
                     Next
                   </Button>

@@ -18,12 +18,12 @@ CREATE TABLE public.profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   username text NOT NULL,
   full_name text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   password_hash text NOT NULL DEFAULT ''::text,
   idstaff text UNIQUE,                    -- Staff ID (used for login)
   is_active boolean DEFAULT true,
   whatsapp_number text,                   -- WhatsApp number (format: 60123456789)
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT profiles_pkey PRIMARY KEY (id)
 );
 
@@ -33,7 +33,7 @@ CREATE TABLE public.profiles (
 CREATE TABLE public.user_roles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
-  role app_role NOT NULL,                 -- marketer, admin, bod, logistic, account
+  role USER-DEFINED NOT NULL,             -- marketer, admin, bod, logistic, account
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT user_roles_pkey PRIMARY KEY (id),
   CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
@@ -63,22 +63,25 @@ CREATE TABLE public.bundles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text NOT NULL,
   units integer NOT NULL DEFAULT 1,
-  -- Normal prices (Facebook, Database, Google) by customer type
-  price_normal_np numeric NOT NULL DEFAULT 0,   -- Normal price for NP (New Prospect)
-  price_normal_ep numeric NOT NULL DEFAULT 0,   -- Normal price for EP (Existing Prospect)
-  price_normal_ec numeric NOT NULL DEFAULT 0,   -- Normal price for EC (Existing Customer)
-  -- Shopee prices by customer type
-  price_shopee_np numeric NOT NULL DEFAULT 0,   -- Shopee price for NP
-  price_shopee_ep numeric NOT NULL DEFAULT 0,   -- Shopee price for EP
-  price_shopee_ec numeric NOT NULL DEFAULT 0,   -- Shopee price for EC
-  -- TikTok prices by customer type
-  price_tiktok_np numeric NOT NULL DEFAULT 0,   -- TikTok price for NP
-  price_tiktok_ep numeric NOT NULL DEFAULT 0,   -- TikTok price for EP
-  price_tiktok_ec numeric NOT NULL DEFAULT 0,   -- TikTok price for EC
-  product_id uuid,                           -- Linked product
+  price_normal numeric NOT NULL DEFAULT 0,    -- Legacy: Normal price
+  price_shopee numeric NOT NULL DEFAULT 0,    -- Legacy: Shopee price
+  price_tiktok numeric NOT NULL DEFAULT 0,    -- Legacy: TikTok price
+  product_id uuid,                            -- Linked product
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  -- Normal prices (Facebook, Database, Google) by customer type
+  price_normal_np numeric NOT NULL DEFAULT 0, -- Normal price for NP (New Prospect)
+  price_normal_ep numeric NOT NULL DEFAULT 0, -- Normal price for EP (Existing Prospect)
+  price_normal_ec numeric NOT NULL DEFAULT 0, -- Normal price for EC (Existing Customer)
+  -- Shopee prices by customer type
+  price_shopee_np numeric NOT NULL DEFAULT 0, -- Shopee price for NP
+  price_shopee_ep numeric NOT NULL DEFAULT 0, -- Shopee price for EP
+  price_shopee_ec numeric NOT NULL DEFAULT 0, -- Shopee price for EC
+  -- TikTok prices by customer type
+  price_tiktok_np numeric NOT NULL DEFAULT 0, -- TikTok price for NP
+  price_tiktok_ep numeric NOT NULL DEFAULT 0, -- TikTok price for EP
+  price_tiktok_ec numeric NOT NULL DEFAULT 0, -- TikTok price for EC
   CONSTRAINT bundles_pkey PRIMARY KEY (id),
   CONSTRAINT bundles_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id)
 );
@@ -114,20 +117,20 @@ CREATE TABLE public.customer_orders (
   nota_staff text,                           -- Staff notes
   tarikh_tempahan text NOT NULL,             -- Order date (string format)
   date_order date DEFAULT CURRENT_DATE,      -- Order date
-  date_processed date,
-  date_return date,                          -- Return date (when delivery_status = 'Return')
+  date_processed date,                       -- Processed date (when delivery_status = 'Shipped')
   jenis_platform text,                       -- Platform: Facebook, Tiktok, Shopee, Database, Google
   jenis_customer text,                       -- Customer type: NP, EP, EC
   cara_bayaran text,                         -- Payment method: CASH, COD
   delivery_status text DEFAULT 'Pending'::text, -- Pending, Shipped, Success, Failed, Return
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
   -- Payment Details (for CASH payments)
   tarikh_bayaran date,                       -- Payment date
   jenis_bayaran text,                        -- Payment type: Online Transfer, Credit Card, CDM, CASH
   bank text,                                 -- Bank name
   receipt_image_url text,                    -- Receipt image URL (Vercel Blob)
   waybill_url text,                          -- Waybill PDF URL (Vercel Blob) - for Shopee/Tiktok
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  date_return date,                          -- Return date (when delivery_status = 'Return')
   CONSTRAINT customer_orders_pkey PRIMARY KEY (id)
 );
 
@@ -255,3 +258,13 @@ CREATE TABLE public.ninjavan_tokens (
 --    - bod: Board of directors, view access
 --    - logistic: Logistics management, products, bundles
 --    - account: Finance and reports access
+--
+-- 6. Delivery Status Flow:
+--    - Pending → Shipped → Success/Failed/Return
+--    - date_processed: Set when status changes to Shipped
+--    - date_return: Set when status changes to Return
+--
+-- 7. Bundle Pricing:
+--    - 9 price columns for 3 platforms x 3 customer types
+--    - Platforms: Normal (Facebook/Database/Google), Shopee, TikTok
+--    - Customer Types: NP (New Prospect), EP (Existing Prospect), EC (Existing Customer)

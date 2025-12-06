@@ -21,6 +21,7 @@ import {
   Wallet,
   Trophy,
   UserCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -90,6 +91,12 @@ const navItems: NavItem[] = [
     label: 'Processed',
     path: '/dashboard/logistics/shipment',
     icon: <Truck className="w-5 h-5" />,
+    roles: ['logistic'],
+  },
+  {
+    label: 'Return',
+    path: '/dashboard/logistics/return',
+    icon: <RotateCcw className="w-5 h-5" />,
     roles: ['logistic'],
   },
   {

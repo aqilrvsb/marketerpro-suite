@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Trophy, Medal, Award, Calendar, Search, Loader2 } from 'lucide-react';
-import { useData } from '@/context/DataContext';
+import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 
 interface MarketerStats {
@@ -26,8 +26,19 @@ interface MarketerStats {
   salesEC: number;
 }
 
+interface Order {
+  id: string;
+  marketer_id_staff: string;
+  marketer_name: string;
+  date_order: string;
+  harga_jualan_sebenar: number;
+  delivery_status: string;
+  jenis_customer: string;
+}
+
 const Top10: React.FC = () => {
-  const { orders, isLoading } = useData();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Date filter state - default to current month
   const today = new Date();
@@ -35,15 +46,37 @@ const Top10: React.FC = () => {
   const [endDate, setEndDate] = useState(format(endOfMonth(today), 'yyyy-MM-dd'));
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Fetch ALL orders directly from Supabase (no marketer filter)
+  useEffect(() => {
+    const fetchAllOrders = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await (supabase as any)
+          .from('customer_orders')
+          .select('id, marketer_id_staff, marketer_name, date_order, harga_jualan_sebenar, delivery_status, jenis_customer')
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        setOrders(data || []);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAllOrders();
+  }, []);
+
   // Calculate marketer statistics
   const marketerStats = useMemo(() => {
     const stats: Record<string, MarketerStats> = {};
 
     // Filter orders by date range
     const filteredOrders = orders.filter(order => {
-      if (!order.dateOrder) return false;
+      if (!order.date_order) return false;
       try {
-        const orderDate = parseISO(order.dateOrder);
+        const orderDate = parseISO(order.date_order);
         return isWithinInterval(orderDate, {
           start: parseISO(startDate),
           end: parseISO(endDate)
@@ -55,8 +88,8 @@ const Top10: React.FC = () => {
 
     // Aggregate stats by marketer
     filteredOrders.forEach(order => {
-      const idStaff = order.marketerIdStaff;
-      const name = order.marketerName;
+      const idStaff = order.marketer_id_staff;
+      const name = order.marketer_name;
 
       if (!stats[idStaff]) {
         stats[idStaff] = {
@@ -74,16 +107,16 @@ const Top10: React.FC = () => {
       }
 
       // Count sales by customer type
-      const saleAmount = Number(order.hargaJualanSebenar) || 0;
+      const saleAmount = Number(order.harga_jualan_sebenar) || 0;
       stats[idStaff].totalSales += saleAmount;
 
       // Count returns
-      if (order.deliveryStatus?.toLowerCase().includes('return')) {
+      if (order.delivery_status?.toLowerCase().includes('return')) {
         stats[idStaff].returns += saleAmount;
       }
 
       // Count by customer type (NP, EP, EC)
-      const customerType = order.jenisCustomer?.toUpperCase();
+      const customerType = order.jenis_customer?.toUpperCase();
       if (customerType === 'NP') {
         stats[idStaff].salesNP += saleAmount;
       } else if (customerType === 'EP') {

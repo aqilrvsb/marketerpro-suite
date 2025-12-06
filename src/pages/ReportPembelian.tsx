@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, RotateCcw, Download, Calendar, Loader2, ShoppingCart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -94,12 +94,10 @@ const ReportPembelian: React.FC = () => {
       if (!order.date_order) return false;
 
       try {
-        const date = parseISO(order.date_order);
-        const withinDateRange = isWithinInterval(date, {
-          start: parseISO(startDate),
-          end: parseISO(endDate)
-        });
-        if (!withinDateRange) return false;
+        // date_order format: "2025-12-06" (YYYY-MM-DD)
+        // Simple string comparison works for YYYY-MM-DD format
+        const orderDateStr = order.date_order;
+        if (orderDateStr < startDate || orderDateStr > endDate) return false;
       } catch {
         return false;
       }

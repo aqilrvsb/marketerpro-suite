@@ -37,7 +37,7 @@ async function sendWhatsApp(instance: string, phone: string, message: string): P
  * Called from frontend when order is created manually
  *
  * POST /api/send-order-notification
- * Body: { order_id: string } or { order: OrderData }
+ * Body: { tracking_number: string } or { order: OrderData, marketer_id: string }
  */
 export default async function handler(req: any, res: any) {
   // CORS headers
@@ -54,12 +54,12 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { order_id, order, marketer_id } = req.body
+    const { tracking_number, order, marketer_id } = req.body
 
-    if (!order_id && !order) {
+    if (!tracking_number && !order) {
       return res.status(400).json({
         success: false,
-        error: 'order_id or order object is required'
+        error: 'tracking_number or order object is required'
       })
     }
 
@@ -77,12 +77,12 @@ export default async function handler(req: any, res: any) {
     let orderData = order
     let orderMarketerId = marketer_id
 
-    // If order_id provided, fetch from database
-    if (order_id) {
+    // If tracking_number provided, fetch from database
+    if (tracking_number) {
       const { data: fetchedOrder, error: orderError } = await supabase
         .from('customer_orders')
         .select('*')
-        .eq('id', order_id)
+        .eq('no_tracking', tracking_number)
         .single()
 
       if (orderError || !fetchedOrder) {

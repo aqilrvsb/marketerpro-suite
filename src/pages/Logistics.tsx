@@ -322,30 +322,35 @@ const Logistics: React.FC = () => {
     setIsPrinting(true);
 
     try {
-      // Call Ninjavan waybill function
-      const { data: waybillResult, error: waybillError } = await supabase.functions.invoke('ninjavan-waybill', {
-        body: { trackingNumbers }
-      });
-
-      if (waybillError) {
-        throw waybillError;
-      }
-
-      if (waybillResult?.error) {
-        throw new Error(waybillResult.error);
-      }
-
-      if (waybillResult?.pdf) {
-        // Convert base64 to blob
-        const byteCharacters = atob(waybillResult.pdf);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+      // Call Ninjavan waybill function - returns PDF directly
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ trackingNumbers }),
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: 'application/pdf' });
+      );
 
-        // Open in new tab
+      if (!response.ok) {
+        // Try to parse error message from JSON response
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch waybill');
+        } else {
+          throw new Error(`Failed to fetch waybill: ${response.status}`);
+        }
+      }
+
+      // Check if response is PDF
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf')) {
+        // Get PDF as blob and open in new tab
+        const blob = await response.blob();
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
 
@@ -353,6 +358,11 @@ const Logistics: React.FC = () => {
           title: 'Waybill Generated',
           description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
         });
+      } else {
+        // Unexpected response format
+        const text = await response.text();
+        console.error('Unexpected response:', text);
+        throw new Error('Unexpected response format from server');
       }
     } catch (error: any) {
       console.error('Error fetching waybill:', error);

@@ -43,9 +43,8 @@ serve(async (req) => {
       );
     }
 
-    // Always get a fresh token for waybill (don't use cached token)
-    // Waybill API requires specific scopes that may differ from order creation
-    console.log('Requesting fresh token from Ninjavan for waybill access');
+    // Get fresh token from Ninjavan OAuth
+    console.log('Requesting fresh token from Ninjavan');
 
     const authResponse = await fetch('https://api.ninjavan.co/my/2.0/oauth/access_token', {
       method: 'POST',
@@ -68,14 +67,13 @@ serve(async (req) => {
 
     const authData = await authResponse.json();
     const accessToken = authData.access_token;
-    console.log('Token obtained successfully, scopes:', authData.scope || 'not provided');
+    console.log('Token obtained successfully');
 
     // Join tracking numbers with comma for Ninjavan API
     const tids = trackingNumbers.join(',');
     console.log('Tracking numbers to fetch:', tids);
 
-    // Try the reports/waybill endpoint which is the standard for bulk waybill download
-    // Based on PHP example: https://api.ninjavan.co/my/2.0/reports/waybill?tids=$track&h=0
+    // Fetch waybill PDF from Ninjavan API (matching PHP example)
     const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${encodeURIComponent(tids)}&h=0`;
     console.log('Fetching waybill from:', waybillUrl);
 
@@ -83,13 +81,12 @@ serve(async (req) => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/pdf',
+        'Accept': 'application/json',
         'Authorization': `Bearer ${accessToken}`
       }
     });
 
     console.log('Waybill response status:', waybillResponse.status);
-    console.log('Waybill response headers:', JSON.stringify(Object.fromEntries(waybillResponse.headers.entries())));
 
     if (!waybillResponse.ok) {
       const contentType = waybillResponse.headers.get('content-type') || '';
@@ -104,7 +101,6 @@ serve(async (req) => {
 
       console.error('Waybill fetch failed:', errorDetails);
 
-      // Return helpful error message
       return new Response(
         JSON.stringify({
           error: 'Failed to fetch waybill from Ninjavan.',
@@ -119,33 +115,20 @@ serve(async (req) => {
       );
     }
 
-    // Check if response is actually PDF
-    const responseContentType = waybillResponse.headers.get('content-type') || '';
-    if (!responseContentType.includes('application/pdf')) {
-      const responseText = await waybillResponse.text();
-      console.error('Response is not PDF:', responseContentType, responseText.substring(0, 500));
-      return new Response(
-        JSON.stringify({
-          error: 'Ninjavan did not return a PDF.',
-          contentType: responseContentType,
-          details: responseText.substring(0, 500)
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get PDF as arrayBuffer and convert to base64
+    // Get PDF as binary and return directly as PDF
     const pdfBuffer = await waybillResponse.arrayBuffer();
-    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer)));
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        pdf: pdfBase64,
-        contentType: 'application/pdf'
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.log('PDF received, size:', pdfBuffer.byteLength, 'bytes');
+
+    // Return PDF directly with proper headers
+    return new Response(pdfBuffer, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="waybill_${tids.replace(/,/g, '_')}.pdf"`
+      }
+    });
 
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Internal server error';

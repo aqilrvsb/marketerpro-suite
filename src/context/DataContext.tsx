@@ -143,10 +143,13 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const addProspect = async (prospect: Omit<Prospect, 'id' | 'createdAt'>) => {
+    // For marketers, auto-set admin_id_staff to their own idstaff if not provided
+    const adminIdStaff = prospect.adminIdStaff || (isMarketer ? userIdStaff : null);
+
     const { error } = await queryTable('prospects').insert({
       nama_prospek: prospect.namaProspek, no_telefon: prospect.noTelefon, niche: prospect.niche,
       jenis_prospek: prospect.jenisProspek, tarikh_phone_number: prospect.tarikhPhoneNumber || null,
-      admin_id_staff: prospect.adminIdStaff, created_by: user?.id,
+      admin_id_staff: adminIdStaff, created_by: user?.id,
     });
     if (error) { toast({ title: 'Error', description: 'Failed to add prospect.', variant: 'destructive' }); throw error; }
     await refreshData();

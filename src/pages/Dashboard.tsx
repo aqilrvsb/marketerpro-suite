@@ -30,8 +30,10 @@ import {
   ClipboardList,
   CreditCard,
   Banknote,
+  LineChart as LineChartIcon,
 } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval, eachDayOfInterval } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface Spend {
   id: string;
@@ -56,11 +58,17 @@ const Dashboard: React.FC = () => {
   // Check user role
   const isMarketer = profile?.role === 'marketer';
   const isLogistic = profile?.role === 'logistic';
+  const isBOD = profile?.role === 'bod';
   const userIdStaff = profile?.idstaff;
 
-  // All orders for logistic (fetched directly from Supabase)
+  // All orders for logistic and BOD (fetched directly from Supabase)
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [allOrdersLoading, setAllOrdersLoading] = useState(true);
+
+  // All spends and prospects for BOD
+  const [allSpends, setAllSpends] = useState<Spend[]>([]);
+  const [allProspects, setAllProspects] = useState<any[]>([]);
+  const [bodDataLoading, setBodDataLoading] = useState(true);
 
   // Fetch spends for the current marketer
   useEffect(() => {
@@ -86,7 +94,7 @@ const Dashboard: React.FC = () => {
     }
   }, [userIdStaff, isMarketer]);
 
-  // Fetch all orders for logistic role
+  // Fetch all orders for logistic and BOD roles
   useEffect(() => {
     const fetchAllOrders = async () => {
       setAllOrdersLoading(true);
@@ -104,10 +112,37 @@ const Dashboard: React.FC = () => {
       }
     };
 
-    if (isLogistic) {
+    if (isLogistic || isBOD) {
       fetchAllOrders();
     }
-  }, [isLogistic]);
+  }, [isLogistic, isBOD]);
+
+  // Fetch all spends and prospects for BOD
+  useEffect(() => {
+    const fetchBODData = async () => {
+      setBodDataLoading(true);
+      try {
+        const [spendsRes, prospectsRes] = await Promise.all([
+          (supabase as any).from('spends').select('*'),
+          (supabase as any).from('prospects').select('*'),
+        ]);
+
+        if (spendsRes.error) throw spendsRes.error;
+        if (prospectsRes.error) throw prospectsRes.error;
+
+        setAllSpends(spendsRes.data || []);
+        setAllProspects(prospectsRes.data || []);
+      } catch (error) {
+        console.error('Error fetching BOD data:', error);
+      } finally {
+        setBodDataLoading(false);
+      }
+    };
+
+    if (isBOD) {
+      fetchBODData();
+    }
+  }, [isBOD]);
 
   // Filter orders by date range
   const filteredOrders = useMemo(() => {
@@ -288,6 +323,148 @@ const Dashboard: React.FC = () => {
       totalPendingTracking,
     };
   }, [filteredAllOrders]);
+
+  // Filter all spends by date range for BOD
+  const filteredAllSpends = useMemo(() => {
+    return allSpends.filter(spend => {
+      if (!spend.tarikh_spend) return false;
+      try {
+        const spendDate = parseISO(spend.tarikh_spend);
+        return isWithinInterval(spendDate, {
+          start: parseISO(startDate),
+          end: parseISO(endDate)
+        });
+      } catch {
+        return false;
+      }
+    });
+  }, [allSpends, startDate, endDate]);
+
+  // Filter all prospects by date range for BOD
+  const filteredAllProspects = useMemo(() => {
+    return allProspects.filter(prospect => {
+      if (!prospect.tarikh_phone_number) return false;
+      try {
+        const prospectDate = parseISO(prospect.tarikh_phone_number);
+        return isWithinInterval(prospectDate, {
+          start: parseISO(startDate),
+          end: parseISO(endDate)
+        });
+      } catch {
+        return false;
+      }
+    });
+  }, [allProspects, startDate, endDate]);
+
+  // Calculate BOD stats (all marketers combined)
+  const bodStats = useMemo(() => {
+    // Total Sales
+    const totalSales = filteredAllOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
+    // Return (only orders with delivery_status = 'Return')
+    const returnOrders = filteredAllOrders.filter(o => o.delivery_status === 'Return');
+    const totalReturn = returnOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
+    // Total Spend (all marketers)
+    const totalSpend = filteredAllSpends.reduce((sum, s) => sum + (Number(s.total_spend) || 0), 0);
+
+    // ROAS
+    const roas = totalSpend > 0 ? totalSales / totalSpend : 0;
+
+    // Sales by Platform
+    const salesFB = filteredAllOrders.filter(o => o.jenis_platform === 'Facebook').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesDatabase = filteredAllOrders.filter(o => o.jenis_platform === 'Database').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesShopee = filteredAllOrders.filter(o => o.jenis_platform === 'Shopee').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesTiktok = filteredAllOrders.filter(o => o.jenis_platform === 'Tiktok').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesGoogle = filteredAllOrders.filter(o => o.jenis_platform === 'Google').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
+    // Sales by Customer Type
+    const salesNP = filteredAllOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesEP = filteredAllOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesEC = filteredAllOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
+    // Total Lead (all marketers)
+    const totalLead = filteredAllProspects.length;
+
+    // Closed leads
+    const closedLeads = filteredAllProspects.filter(p => p.status_closed && p.status_closed.trim() !== '').length;
+
+    // Average KPK
+    const averageKPK = totalLead > 0 ? totalSpend / totalLead : 0;
+
+    // Closing Rate
+    const closingRate = totalLead > 0 ? (closedLeads / totalLead) * 100 : 0;
+
+    // Calculate percentages
+    const returnPercent = totalSales > 0 ? (totalReturn / totalSales) * 100 : 0;
+    const fbPercent = totalSales > 0 ? (salesFB / totalSales) * 100 : 0;
+    const dbPercent = totalSales > 0 ? (salesDatabase / totalSales) * 100 : 0;
+    const shopeePercent = totalSales > 0 ? (salesShopee / totalSales) * 100 : 0;
+    const tiktokPercent = totalSales > 0 ? (salesTiktok / totalSales) * 100 : 0;
+    const googlePercent = totalSales > 0 ? (salesGoogle / totalSales) * 100 : 0;
+    const npPercent = totalSales > 0 ? (salesNP / totalSales) * 100 : 0;
+    const epPercent = totalSales > 0 ? (salesEP / totalSales) * 100 : 0;
+    const ecPercent = totalSales > 0 ? (salesEC / totalSales) * 100 : 0;
+
+    return {
+      totalSales,
+      totalReturn,
+      returnPercent,
+      totalSpend,
+      roas,
+      salesFB,
+      fbPercent,
+      salesDatabase,
+      dbPercent,
+      salesShopee,
+      shopeePercent,
+      salesTiktok,
+      tiktokPercent,
+      salesGoogle,
+      googlePercent,
+      salesNP,
+      npPercent,
+      salesEP,
+      epPercent,
+      salesEC,
+      ecPercent,
+      totalLead,
+      averageKPK,
+      closingRate,
+    };
+  }, [filteredAllOrders, filteredAllSpends, filteredAllProspects]);
+
+  // Chart data for BOD - Sales by date
+  const bodChartData = useMemo(() => {
+    if (!startDate || !endDate) return [];
+
+    try {
+      const days = eachDayOfInterval({
+        start: parseISO(startDate),
+        end: parseISO(endDate)
+      });
+
+      return days.map(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const dayOrders = filteredAllOrders.filter(o => o.date_order === dateStr);
+
+        const totalSales = dayOrders.reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+        const salesNP = dayOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+        const salesEP = dayOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+        const salesEC = dayOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
+        return {
+          date: format(day, 'dd-MMM'),
+          'Total Sales': totalSales,
+          'Sales NP': salesNP,
+          'Sales EP': salesEP,
+          'Sales EC': salesEC,
+        };
+      });
+    } catch {
+      return [];
+    }
+  }, [filteredAllOrders, startDate, endDate]);
 
   const formatCurrency = (value: number) => {
     return `RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -682,7 +859,288 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // Default Dashboard for other roles (admin, bod, account)
+  // BOD Dashboard - Business Owner Dashboard
+  if (isBOD) {
+    if (allOrdersLoading || bodDataLoading) {
+      return (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-primary">
+            Welcome back, {profile?.fullName || 'Owner'}!
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Business performance overview - All marketers combined
+          </p>
+        </div>
+
+        {/* Date Filter */}
+        <div className="stat-card">
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Calendar className="w-5 h-5" />
+              <span className="font-medium text-foreground">Date Range:</span>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="startDate" className="text-xs text-muted-foreground">From</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="endDate" className="text-xs text-muted-foreground">To</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-40"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Total Sales */}
+          <div className="stat-card border-l-4 border-l-success">
+            <div className="flex items-center gap-2 text-success mb-2">
+              <DollarSign className="w-5 h-5" />
+              <span className="text-sm font-medium">TOTAL SALES</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(bodStats.totalSales)}</p>
+            <p className="text-xs text-muted-foreground mt-1">100%</p>
+          </div>
+
+          {/* Return */}
+          <div className="stat-card border-l-4 border-l-destructive">
+            <div className="flex items-center gap-2 text-destructive mb-2">
+              <RotateCcw className="w-5 h-5" />
+              <span className="text-sm font-medium">RETURN</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(bodStats.totalReturn)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.returnPercent)}</p>
+          </div>
+
+          {/* Total Spend */}
+          <div className="stat-card border-l-4 border-l-warning">
+            <div className="flex items-center gap-2 text-warning mb-2">
+              <Wallet className="w-5 h-5" />
+              <span className="text-sm font-medium">TOTAL SPEND</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(bodStats.totalSpend)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Ad Budget</p>
+          </div>
+
+          {/* ROAS */}
+          <div className="stat-card border-l-4 border-l-primary">
+            <div className="flex items-center gap-2 text-primary mb-2">
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-sm font-medium">ROAS</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{bodStats.roas.toFixed(2)}x</p>
+            <p className="text-xs text-muted-foreground mt-1">Return on Ad Spend</p>
+          </div>
+        </div>
+
+        {/* Platform Sales Row */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {/* Sales FB */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-blue-600 mb-2">
+              <Facebook className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES FB</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesFB)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.fbPercent)}</p>
+          </div>
+
+          {/* Sales Database */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-purple-600 mb-2">
+              <Database className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES DATABASE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesDatabase)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.dbPercent)}</p>
+          </div>
+
+          {/* Sales Shopee */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-orange-600 mb-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES SHOPEE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShopee)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopeePercent)}</p>
+          </div>
+
+          {/* Sales TikTok */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-pink-600 mb-2">
+              <Play className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES TIKTOK</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesTiktok)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.tiktokPercent)}</p>
+          </div>
+
+          {/* Sales Google */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-red-600 mb-2">
+              <SearchIcon className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES GOOGLE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesGoogle)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.googlePercent)}</p>
+          </div>
+        </div>
+
+        {/* Customer Type Sales Row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {/* Sales NP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-cyan-600 mb-2">
+              <UserPlus className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES NP</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesNP)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.npPercent)} - New Prospect</p>
+          </div>
+
+          {/* Sales EP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-amber-600 mb-2">
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES EP</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesEP)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.epPercent)} - Existing Prospect</p>
+          </div>
+
+          {/* Sales EC */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-emerald-600 mb-2">
+              <UserCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">SALES EC</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesEC)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.ecPercent)} - Existing Customer</p>
+          </div>
+        </div>
+
+        {/* Lead Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {/* Total Lead */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-indigo-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">TOTAL LEAD</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{bodStats.totalLead}</p>
+            <p className="text-xs text-muted-foreground mt-1">Prospects in period</p>
+          </div>
+
+          {/* Average KPK */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-teal-600 mb-2">
+              <Target className="w-5 h-5" />
+              <span className="text-sm font-medium">AVERAGE KPK</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(bodStats.averageKPK)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Kos Per Lead</p>
+          </div>
+
+          {/* Closing Rate Lead */}
+          <div className="stat-card-highlight">
+            <div className="flex items-center gap-2 text-white/80 mb-2">
+              <Percent className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING RATE</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{formatPercent(bodStats.closingRate)}</p>
+            <p className="text-xs text-white/60 mt-1">Lead Conversion</p>
+          </div>
+        </div>
+
+        {/* Sales Chart */}
+        <div className="stat-card">
+          <div className="flex items-center gap-2 mb-4">
+            <LineChartIcon className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">
+              Sales Trend from {format(parseISO(startDate), 'dd-MMM-yyyy')} to {format(parseISO(endDate), 'dd-MMM-yyyy')}
+            </h2>
+          </div>
+          <div className="h-80">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={bodChartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  className="text-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  tickFormatter={(value) => `RM ${(value / 1000).toFixed(0)}k`}
+                  className="text-muted-foreground"
+                />
+                <Tooltip
+                  formatter={(value: number) => [`RM ${value.toLocaleString('en-MY', { minimumFractionDigits: 2 })}`, '']}
+                  labelStyle={{ color: '#333' }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="Total Sales"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={{ fill: '#22c55e', strokeWidth: 2 }}
+                  activeDot={{ r: 6 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Sales NP"
+                  stroke="#06b6d4"
+                  strokeWidth={2}
+                  dot={{ fill: '#06b6d4', strokeWidth: 2 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Sales EP"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  dot={{ fill: '#f59e0b', strokeWidth: 2 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Sales EC"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ fill: '#10b981', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default Dashboard for other roles (admin, account)
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}

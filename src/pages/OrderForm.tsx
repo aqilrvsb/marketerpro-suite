@@ -488,6 +488,55 @@ const OrderForm: React.FC = () => {
           }
         }
 
+        // Helper function to upload to Vercel Blob
+        const uploadToVercelBlob = async (file: File, folder: string): Promise<string> => {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('folder', folder);
+
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error('Upload failed');
+          }
+
+          const data = await response.json();
+          return data.url;
+        };
+
+        // Upload receipt image if provided
+        let receiptUrl = '';
+        if (receiptFile && showPaymentDetails) {
+          try {
+            receiptUrl = await uploadToVercelBlob(receiptFile, 'receipts');
+          } catch (uploadError) {
+            console.error('Receipt upload error:', uploadError);
+            toast({
+              title: 'Amaran',
+              description: 'Gagal memuat naik resit. Order tetap disimpan.',
+              variant: 'destructive',
+            });
+          }
+        }
+
+        // Upload waybill PDF if provided (for Shopee/Tiktok)
+        let waybillUrl = '';
+        if (waybillFile && isShopeeOrTiktokOrder) {
+          try {
+            waybillUrl = await uploadToVercelBlob(waybillFile, 'waybills');
+          } catch (uploadError) {
+            console.error('Waybill upload error:', uploadError);
+            toast({
+              title: 'Amaran',
+              description: 'Gagal memuat naik waybill. Order tetap disimpan.',
+              variant: 'destructive',
+            });
+          }
+        }
+
         await addOrder({
           noTempahan: orderNumber,
           idSale: idSale,
@@ -519,6 +568,11 @@ const OrderForm: React.FC = () => {
           caraBayaran: formData.caraBayaran,
           notaStaff: formData.nota,
           beratParcel: 0,
+          tarikhBayaran: showPaymentDetails && tarikhBayaran ? format(tarikhBayaran, 'yyyy-MM-dd') : '',
+          jenisBayaran: showPaymentDetails ? formData.jenisBayaran : '',
+          bank: showPaymentDetails ? formData.pilihBank : '',
+          receiptImageUrl: receiptUrl,
+          waybillUrl: waybillUrl,
         });
 
         // If NP or EP, find latest lead from this marketer matching SKU (niche) and update status_closed and price_closed

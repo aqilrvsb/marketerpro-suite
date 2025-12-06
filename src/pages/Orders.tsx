@@ -609,7 +609,7 @@ const Orders: React.FC = () => {
 
       {/* Payment Details Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Butiran Bayaran</DialogTitle>
           </DialogHeader>
@@ -617,29 +617,42 @@ const Orders: React.FC = () => {
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Cara Bayaran</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.caraBayaran || '-'}</p>
+                  <p className="text-sm text-muted-foreground">Tarikh Bayaran</p>
+                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.tarikhBayaran || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Jenis Platform</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.jenisPlatform || '-'}</p>
+                  <p className="text-sm text-muted-foreground">Jenis Bayaran</p>
+                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.jenisBayaran || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">No. Tempahan</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.noTempahan}</p>
+                  <p className="text-sm text-muted-foreground">Bank</p>
+                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.bank || '-'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Harga Jualan</p>
                   <p className="text-sm font-medium text-foreground">RM {selectedOrderPayment.hargaJualanSebenar?.toFixed(2)}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Nama Pelanggan</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.marketerName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">No. Phone</p>
-                  <p className="text-sm font-medium text-foreground">{selectedOrderPayment.noPhone}</p>
-                </div>
+              </div>
+
+              {/* Receipt Image */}
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Resit Bayaran</p>
+                {selectedOrderPayment.receiptImageUrl ? (
+                  <a
+                    href={selectedOrderPayment.receiptImageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src={selectedOrderPayment.receiptImageUrl}
+                      alt="Resit Bayaran"
+                      className="max-w-full h-48 object-contain rounded-lg border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                    />
+                  </a>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Tiada resit dimuat naik</p>
+                )}
               </div>
             </div>
           )}

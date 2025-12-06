@@ -65,6 +65,7 @@ export type Database = {
         Row: {
           alamat: string
           bandar: string
+          bank: string | null
           berat_parcel: number | null
           cara_bayaran: string | null
           created_at: string
@@ -76,6 +77,7 @@ export type Database = {
           harga_jualan_sebenar: number
           id: string
           id_sale: string | null
+          jenis_bayaran: string | null
           jenis_customer: string | null
           jenis_platform: string | null
           kos_pos: number | null
@@ -93,14 +95,18 @@ export type Database = {
           poskod: string
           produk: string
           profit: number | null
+          receipt_image_url: string | null
           sku: string
           status_parcel: string | null
+          tarikh_bayaran: string | null
           tarikh_tempahan: string
           updated_at: string
+          waybill_url: string | null
         }
         Insert: {
           alamat: string
           bandar: string
+          bank?: string | null
           berat_parcel?: number | null
           cara_bayaran?: string | null
           created_at?: string
@@ -112,6 +118,7 @@ export type Database = {
           harga_jualan_sebenar: number
           id?: string
           id_sale?: string | null
+          jenis_bayaran?: string | null
           jenis_customer?: string | null
           jenis_platform?: string | null
           kos_pos?: number | null
@@ -129,14 +136,18 @@ export type Database = {
           poskod: string
           produk: string
           profit?: number | null
+          receipt_image_url?: string | null
           sku: string
           status_parcel?: string | null
+          tarikh_bayaran?: string | null
           tarikh_tempahan: string
           updated_at?: string
+          waybill_url?: string | null
         }
         Update: {
           alamat?: string
           bandar?: string
+          bank?: string | null
           berat_parcel?: number | null
           cara_bayaran?: string | null
           created_at?: string
@@ -148,6 +159,7 @@ export type Database = {
           harga_jualan_sebenar?: number
           id?: string
           id_sale?: string | null
+          jenis_bayaran?: string | null
           jenis_customer?: string | null
           jenis_platform?: string | null
           kos_pos?: number | null
@@ -165,10 +177,13 @@ export type Database = {
           poskod?: string
           produk?: string
           profit?: number | null
+          receipt_image_url?: string | null
           sku?: string
           status_parcel?: string | null
+          tarikh_bayaran?: string | null
           tarikh_tempahan?: string
           updated_at?: string
+          waybill_url?: string | null
         }
         Relationships: []
       }

@@ -28,7 +28,8 @@ interface DeviceSetting {
   created_at: string;
 }
 
-const WHACENTER_API_URL = 'https://app.whacenter.com/api';
+const WHACENTER_API_URL = 'https://api.whacenter.com/api';
+const DEFAULT_WHACENTER_API_KEY = 'd44ac50f-0bd8-4ed0-b85f-55465e08d7cf';
 
 const Profile: React.FC = () => {
   const { profile } = useAuth();
@@ -52,7 +53,6 @@ const Profile: React.FC = () => {
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [showQrModal, setShowQrModal] = useState(false);
   const [deviceForm, setDeviceForm] = useState({
-    apiKey: '',
     phoneNumber: '',
   });
 
@@ -81,7 +81,6 @@ const Profile: React.FC = () => {
       setDevice(data || null);
       if (data) {
         setDeviceForm({
-          apiKey: data.api_key || '',
           phoneNumber: data.phone_number || '',
         });
       }
@@ -99,15 +98,6 @@ const Profile: React.FC = () => {
   const handleCreateDevice = async () => {
     if (!profile?.id) return;
 
-    if (!deviceForm.apiKey) {
-      toast({
-        title: 'Error',
-        description: 'Sila masukkan API Key dari Whacenter.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     if (!deviceForm.phoneNumber || !deviceForm.phoneNumber.startsWith('6')) {
       toast({
         title: 'Error',
@@ -122,13 +112,13 @@ const Profile: React.FC = () => {
       const webhookId = generateWebhookId();
       const idDevice = `DFR_${profile.idstaff}`;
 
-      // Create device in database
+      // Create device in database using default API key
       const { data: newDevice, error } = await (supabase as any)
         .from('device_setting')
         .insert({
           user_id: profile.id,
           provider: 'whacenter',
-          api_key: deviceForm.apiKey,
+          api_key: DEFAULT_WHACENTER_API_KEY,
           id_device: idDevice,
           phone_number: deviceForm.phoneNumber,
           webhook_id: webhookId,
@@ -157,7 +147,7 @@ const Profile: React.FC = () => {
   };
 
   const handleGenerateDevice = async () => {
-    if (!device || !device.api_key) {
+    if (!device) {
       toast({
         title: 'Error',
         description: 'Sila cipta device dahulu.',
@@ -166,10 +156,12 @@ const Profile: React.FC = () => {
       return;
     }
 
+    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
+
     setIsGeneratingDevice(true);
     try {
       // Step 1: Add device to Whacenter
-      const addDeviceUrl = `${WHACENTER_API_URL}/addDevice?api_key=${device.api_key}&name=${device.id_device}&number=${device.phone_number}`;
+      const addDeviceUrl = `${WHACENTER_API_URL}/addDevice?api_key=${apiKey}&name=${device.id_device}&number=${device.phone_number}`;
       const addResponse = await fetch(addDeviceUrl);
       const addResult = await addResponse.json();
 
@@ -211,7 +203,7 @@ const Profile: React.FC = () => {
   };
 
   const handleCheckStatus = async () => {
-    if (!device || !device.api_key || !device.instance) {
+    if (!device || !device.instance) {
       toast({
         title: 'Error',
         description: 'Device belum digenerate.',
@@ -220,10 +212,12 @@ const Profile: React.FC = () => {
       return;
     }
 
+    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
+
     setIsCheckingStatus(true);
     setQrCode(null);
     try {
-      const statusUrl = `${WHACENTER_API_URL}/getStatus?api_key=${device.api_key}&device_id=${device.instance}`;
+      const statusUrl = `${WHACENTER_API_URL}/getStatus?api_key=${apiKey}&device_id=${device.instance}`;
       const response = await fetch(statusUrl);
       const result = await response.json();
 
@@ -267,7 +261,7 @@ const Profile: React.FC = () => {
   };
 
   const handleScanQR = async () => {
-    if (!device || !device.api_key || !device.instance) {
+    if (!device || !device.instance) {
       toast({
         title: 'Error',
         description: 'Device belum digenerate.',
@@ -276,9 +270,11 @@ const Profile: React.FC = () => {
       return;
     }
 
+    const apiKey = device.api_key || DEFAULT_WHACENTER_API_KEY;
+
     setIsCheckingStatus(true);
     try {
-      const qrUrl = `${WHACENTER_API_URL}/getQr?api_key=${device.api_key}&device_id=${device.instance}`;
+      const qrUrl = `${WHACENTER_API_URL}/getQr?api_key=${apiKey}&device_id=${device.instance}`;
       const response = await fetch(qrUrl);
       const result = await response.json();
 
@@ -328,7 +324,7 @@ const Profile: React.FC = () => {
       if (error) throw error;
 
       setDevice(null);
-      setDeviceForm({ apiKey: '', phoneNumber: '' });
+      setDeviceForm({ phoneNumber: '' });
       toast({
         title: 'Berjaya',
         description: 'Device berjaya dipadam.',
@@ -498,20 +494,8 @@ const Profile: React.FC = () => {
             // Create Device Form
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sila masukkan API Key dari Whacenter untuk mencipta device WhatsApp.
+                Masukkan nombor telefon WhatsApp anda untuk mencipta device.
               </p>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  API Key Whacenter *
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Masukkan API Key"
-                  value={deviceForm.apiKey}
-                  onChange={(e) => setDeviceForm({ ...deviceForm, apiKey: e.target.value })}
-                  className="bg-background"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                   No. Telefon WhatsApp *
@@ -523,6 +507,9 @@ const Profile: React.FC = () => {
                   onChange={(e) => setDeviceForm({ ...deviceForm, phoneNumber: e.target.value })}
                   className="bg-background"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Format: 60123456789 (bermula dengan 6)
+                </p>
               </div>
               <Button
                 onClick={handleCreateDevice}

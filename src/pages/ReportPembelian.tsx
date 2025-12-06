@@ -90,8 +90,8 @@ const ReportPembelian: React.FC = () => {
   // Filter orders by date range and search
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // Filter by date_order
-      const orderDate = order.date_order;
+      // Filter by date_order (fallback to tarikh_tempahan)
+      const orderDate = order.date_order || order.tarikh_tempahan;
       if (!orderDate) return false;
 
       try {

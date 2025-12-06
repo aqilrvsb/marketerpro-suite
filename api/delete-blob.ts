@@ -1,7 +1,7 @@
 import { del } from '@vercel/blob'
 
 export const config = {
-  runtime: 'nodejs20.x',
+  runtime: 'nodejs',
 }
 
 export default async function handler(req: any, res: any) {

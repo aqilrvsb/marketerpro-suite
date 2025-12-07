@@ -8,6 +8,33 @@ export const config = {
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
 
+const WHACENTER_API = 'https://api.whacenter.com/api'
+
+// Send WhatsApp message via Whacenter
+async function sendWhatsApp(instance: string, phone: string, message: string): Promise<boolean> {
+  try {
+    // Format phone number (ensure it starts with country code)
+    let formattedPhone = phone.replace(/\D/g, '')
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = '60' + formattedPhone.substring(1)
+    }
+    if (!formattedPhone.startsWith('60')) {
+      formattedPhone = '60' + formattedPhone
+    }
+
+    const url = `${WHACENTER_API}/send?device_id=${encodeURIComponent(instance)}&number=${encodeURIComponent(formattedPhone)}&message=${encodeURIComponent(message)}`
+
+    const response = await fetch(url, { method: 'GET' })
+    const data = await response.json()
+
+    console.log('WhatsApp send result:', data)
+    return data.status === true || data.success === true
+  } catch (error) {
+    console.error('Failed to send WhatsApp:', error)
+    return false
+  }
+}
+
 /**
  * Ninjavan Webhook Handler
  *
@@ -37,7 +64,7 @@ function processEvent(event: string): { seo: string; isSuccess: boolean; isRetur
 
   // Check if event is "Returned To Sender"
   if (eventLower === 'returned to sender' || eventLower.includes('returned to sender')) {
-    return { seo: event, isSuccess: false, isReturn: true }
+    return { seo: 'Return', isSuccess: false, isReturn: true }
   }
 
   // All other events - just save as SEO
@@ -152,13 +179,33 @@ export default async function handler(req: any, res: any) {
 
     console.log('Order updated successfully:', order.no_tracking)
 
+    // Send WhatsApp notification to customer
+    let whatsappSent = false
+
+    if (order.marketer_id && order.no_phone) {
+      // Get marketer's device setting
+      const { data: deviceSettings } = await supabase
+        .from('device_setting')
+        .select('instance, status_wa')
+        .eq('user_id', order.marketer_id)
+        .eq('status_wa', 'connected')
+        .limit(1)
+
+      if (deviceSettings && deviceSettings.length > 0 && deviceSettings[0].instance) {
+        // Send the event as the message
+        whatsappSent = await sendWhatsApp(deviceSettings[0].instance, order.no_phone, event)
+        console.log('WhatsApp notification sent:', whatsappSent)
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Order updated successfully',
       order_id: order.id,
       tracking_id: order.no_tracking,
       event: event,
-      processed: processedEvent
+      processed: processedEvent,
+      whatsapp_sent: whatsappSent
     })
 
   } catch (error: any) {

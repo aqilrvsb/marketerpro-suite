@@ -78,10 +78,47 @@ const Profile: React.FC = () => {
       if (error && error.code !== 'PGRST116') {
         console.error('Error loading device:', error);
       }
-      setDevice(data || null);
-      if (data) {
+
+      let deviceData = data || null;
+
+      // If device exists with instance, check status from Whacenter API
+      if (deviceData && deviceData.instance) {
+        try {
+          const statusUrl = `${WHACENTER_PROXY_URL}?endpoint=statusDevice&device_id=${encodeURIComponent(deviceData.instance)}`;
+          const statusResponse = await fetch(statusUrl);
+          const statusResult = await statusResponse.json();
+
+          console.log('Device status from Whacenter:', statusResult);
+
+          // Determine status from API response
+          // Whacenter returns: { status: true/false, data: { status: "connect"/"disconnect" } }
+          let newStatus = 'disconnected';
+          if (statusResult.data?.status === 'connect' || statusResult.data?.status === 'connected') {
+            newStatus = 'connected';
+          }
+
+          // Update database if status changed
+          if (newStatus !== deviceData.status_wa) {
+            await (supabase as any)
+              .from('device_setting')
+              .update({
+                status_wa: newStatus,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', deviceData.id);
+
+            deviceData = { ...deviceData, status_wa: newStatus };
+            console.log(`Device status updated to: ${newStatus}`);
+          }
+        } catch (statusErr) {
+          console.error('Error checking device status:', statusErr);
+        }
+      }
+
+      setDevice(deviceData);
+      if (deviceData) {
         setDeviceForm({
-          phoneNumber: data.phone_number || '',
+          phoneNumber: deviceData.phone_number || '',
         });
       }
     } catch (err) {

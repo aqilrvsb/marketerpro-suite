@@ -158,7 +158,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleCheckStatus = async () => {
+  const handleRefreshStatus = async () => {
     if (!device || !device.instance) {
       toast({
         title: 'Error',
@@ -168,26 +168,43 @@ const Profile: React.FC = () => {
       return;
     }
 
+    if (!confirm('Adakah anda pasti mahu refresh device? Device akan dipadam dan dicipta semula.')) return;
+
     setIsCheckingStatus(true);
     try {
-      // Use proxy endpoint
-      const statusUrl = `${WHACENTER_PROXY_URL}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`;
-      const response = await fetch(statusUrl);
-      const result = await response.json();
+      // Step 1: Delete device from Whacenter
+      console.log('Deleting device from Whacenter:', device.instance);
+      const deleteUrl = `${WHACENTER_PROXY_URL}?endpoint=deleteDevice&device_id=${encodeURIComponent(device.instance)}`;
+      await fetch(deleteUrl);
 
-      console.log('Status result:', result);
+      // Step 2: Create new device in Whacenter
+      const idDevice = device.id_device || `DFR_${profile?.idstaff}`;
+      const phoneNumber = device.phone_number || '';
 
-      // Whacenter returns: { status: true, data: { status: 'connect' or 'disconnect' } }
-      const statusValue = result.data?.status || result.status || '';
-      const isConnected = statusValue.toLowerCase() === 'connect' ||
-                          statusValue.toLowerCase() === 'connected' ||
-                          statusValue.toLowerCase() === 'working';
+      console.log('Creating new device:', idDevice);
+      const addDeviceUrl = `${WHACENTER_PROXY_URL}?endpoint=addDevice&name=${encodeURIComponent(idDevice)}&number=${encodeURIComponent(phoneNumber)}`;
+      const addResponse = await fetch(addDeviceUrl);
+      const addResult = await addResponse.json();
 
-      // Update status in database
+      console.log('Add device result:', addResult);
+
+      if (!addResult.success && !addResult.status) {
+        throw new Error(addResult.message || addResult.error || 'Gagal menambah device ke Whacenter');
+      }
+
+      const newInstanceId = addResult.data?.device?.device_id || addResult.data?.device_id || addResult.device_id;
+
+      if (!newInstanceId) {
+        throw new Error('Device ID tidak diterima dari Whacenter');
+      }
+
+      // Step 3: Update database with new instance ID
       await (supabase as any)
         .from('device_setting')
         .update({
-          status_wa: isConnected ? 'connected' : 'disconnected',
+          instance: newInstanceId,
+          device_id: newInstanceId,
+          status_wa: 'disconnected',
           updated_at: new Date().toISOString(),
         })
         .eq('id', device.id);
@@ -195,17 +212,14 @@ const Profile: React.FC = () => {
       await loadDevice();
 
       toast({
-        title: isConnected ? 'Connected' : 'Disconnected',
-        description: isConnected
-          ? 'WhatsApp berjaya disambung!'
-          : 'WhatsApp tidak disambung. Sila scan QR code.',
-        variant: isConnected ? 'default' : 'destructive',
+        title: 'Berjaya',
+        description: 'Device berjaya di-refresh. Klik "Scan QR" untuk sambung WhatsApp.',
       });
     } catch (error: any) {
-      console.error('Check status error:', error);
+      console.error('Refresh status error:', error);
       toast({
         title: 'Error',
-        description: error.message || 'Gagal semak status.',
+        description: error.message || 'Gagal refresh device.',
         variant: 'destructive',
       });
     } finally {
@@ -517,7 +531,7 @@ const Profile: React.FC = () => {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  onClick={handleCheckStatus}
+                  onClick={handleRefreshStatus}
                   disabled={isCheckingStatus || !device.instance}
                 >
                   {isCheckingStatus ? (
@@ -689,14 +703,6 @@ const Profile: React.FC = () => {
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setShowQrModal(false)}>
               Tutup
-            </Button>
-            <Button className="flex-1" onClick={handleCheckStatus} disabled={isCheckingStatus}>
-              {isCheckingStatus ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4 mr-2" />
-              )}
-              Refresh
             </Button>
           </div>
         </DialogContent>

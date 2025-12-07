@@ -91,9 +91,10 @@ const Profile: React.FC = () => {
           console.log('Device status from Whacenter:', statusResult);
 
           // Determine status from API response
-          // Whacenter returns: { status: true/false, data: { status: "connect"/"disconnect" } }
+          // Whacenter returns: { status: true/false, data: { status: "CONNECTED"/"DISCONNECTED" } }
           let newStatus = 'disconnected';
-          if (statusResult.data?.status === 'connect' || statusResult.data?.status === 'connected') {
+          const apiStatus = statusResult.data?.status?.toLowerCase();
+          if (apiStatus === 'connect' || apiStatus === 'connected') {
             newStatus = 'connected';
           }
 

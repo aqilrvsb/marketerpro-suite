@@ -23,6 +23,7 @@ import {
   UserCircle,
   RotateCcw,
   FileSpreadsheet,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -98,6 +99,12 @@ const navItems: NavItem[] = [
     label: 'Report Pembelian',
     path: '/dashboard/report-pembelian',
     icon: <ShoppingCart className="w-5 h-5" />,
+    roles: ['bod'],
+  },
+  {
+    label: 'Template',
+    path: '/dashboard/template',
+    icon: <MessageSquare className="w-5 h-5" />,
     roles: ['bod'],
   },
   {

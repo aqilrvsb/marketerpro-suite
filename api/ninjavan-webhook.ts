@@ -150,9 +150,10 @@ export default async function handler(req: any, res: any) {
 
     const today = new Date().toISOString().split('T')[0]
 
-    // If delivered -> update tarikh_bayaran to today
+    // If delivered -> update tarikh_bayaran to today and delivery_status to Shipped
     if (processedEvent.isSuccess) {
       updateData.tarikh_bayaran = today
+      updateData.delivery_status = 'Shipped'
     }
 
     // If returned -> update delivery_status to Return and date_return to today

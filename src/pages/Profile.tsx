@@ -567,26 +567,30 @@ const Profile: React.FC = () => {
 
 
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  onClick={handleRefreshStatus}
-                  disabled={isCheckingStatus || !device.instance}
-                >
-                  {isCheckingStatus ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                  )}
-                  Refresh Status
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleScanQR}
-                  disabled={isCheckingStatus || !device.instance}
-                >
-                  <QrCode className="w-4 h-4 mr-2" />
-                  Scan QR
-                </Button>
+                {device.status_wa !== 'connected' && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleRefreshStatus}
+                      disabled={isCheckingStatus || !device.instance}
+                    >
+                      {isCheckingStatus ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      Refresh Status
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleScanQR}
+                      disabled={isCheckingStatus || !device.instance}
+                    >
+                      <QrCode className="w-4 h-4 mr-2" />
+                      Scan QR
+                    </Button>
+                  </>
+                )}
                 <Button
                   variant="destructive"
                   size="icon"

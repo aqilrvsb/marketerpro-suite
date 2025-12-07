@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import {
   UserCircle, Lock, Phone, Loader2, Eye, EyeOff, Smartphone,
-  RefreshCw, QrCode, Wifi, WifiOff, Plus, Trash2, Copy, CheckCircle2
+  RefreshCw, QrCode, Wifi, WifiOff, Plus, Trash2
 } from 'lucide-react';
 import {
   Dialog,
@@ -91,10 +91,6 @@ const Profile: React.FC = () => {
     }
   };
 
-  const generateWebhookId = () => {
-    return crypto.randomUUID();
-  };
-
   const handleCreateDevice = async () => {
     if (!profile?.id) return;
 
@@ -109,13 +105,14 @@ const Profile: React.FC = () => {
 
     setIsGeneratingDevice(true);
     try {
-      const webhookId = generateWebhookId();
       const idDevice = `DFR_${profile.idstaff}`;
 
       // Step 1: Create device in Whacenter via proxy
       const addDeviceUrl = `${WHACENTER_PROXY_URL}?endpoint=addDevice&name=${encodeURIComponent(idDevice)}&number=${encodeURIComponent(deviceForm.phoneNumber)}`;
       const addResponse = await fetch(addDeviceUrl);
       const addResult = await addResponse.json();
+
+      console.log('Add device result:', addResult);
 
       if (!addResult.success && !addResult.status) {
         throw new Error(addResult.message || addResult.error || 'Gagal menambah device ke Whacenter');
@@ -127,16 +124,7 @@ const Profile: React.FC = () => {
         throw new Error('Device ID tidak diterima dari Whacenter');
       }
 
-      // Step 2: Set webhook for the device
-      const webhookUrl = `${window.location.origin}/api/webhook/${webhookId}`;
-      try {
-        const setWebhookUrl = `${WHACENTER_PROXY_URL}?endpoint=setWebhook&device_id=${encodeURIComponent(instanceId)}&webhook=${encodeURIComponent(webhookUrl)}`;
-        await fetch(setWebhookUrl);
-      } catch (webhookErr) {
-        console.warn('Failed to set webhook:', webhookErr);
-      }
-
-      // Step 3: Save to database with instance ID
+      // Step 2: Save to database with instance ID
       const { data: newDevice, error } = await (supabase as any)
         .from('device_setting')
         .insert({
@@ -144,7 +132,6 @@ const Profile: React.FC = () => {
           provider: 'whacenter',
           id_device: idDevice,
           phone_number: deviceForm.phoneNumber,
-          webhook_id: webhookId,
           instance: instanceId,
           device_id: instanceId,
           status_wa: 'disconnected',
@@ -182,15 +169,19 @@ const Profile: React.FC = () => {
     }
 
     setIsCheckingStatus(true);
-    setQrCode(null);
     try {
       // Use proxy endpoint
       const statusUrl = `${WHACENTER_PROXY_URL}?endpoint=statusDevice&device_id=${encodeURIComponent(device.instance)}`;
       const response = await fetch(statusUrl);
       const result = await response.json();
 
-      const status = result.data?.status || result.status || 'disconnected';
-      const isConnected = status.toLowerCase() === 'connected' || status.toLowerCase() === 'working';
+      console.log('Status result:', result);
+
+      // Whacenter returns: { status: true, data: { status: 'connect' or 'disconnect' } }
+      const statusValue = result.data?.status || result.status || '';
+      const isConnected = statusValue.toLowerCase() === 'connect' ||
+                          statusValue.toLowerCase() === 'connected' ||
+                          statusValue.toLowerCase() === 'working';
 
       // Update status in database
       await (supabase as any)
@@ -200,12 +191,6 @@ const Profile: React.FC = () => {
           updated_at: new Date().toISOString(),
         })
         .eq('id', device.id);
-
-      // If not connected and QR code available, show it
-      if (!isConnected && result.data?.qr) {
-        setQrCode(result.data.qr);
-        setShowQrModal(true);
-      }
 
       await loadDevice();
 
@@ -239,20 +224,24 @@ const Profile: React.FC = () => {
     }
 
     setIsCheckingStatus(true);
+    setQrCode(null);
+    setShowQrModal(true); // Show modal immediately with loading state
+
     try {
       // Use proxy endpoint for QR
       const qrUrl = `${WHACENTER_PROXY_URL}?endpoint=qr&device_id=${encodeURIComponent(device.instance)}`;
       const response = await fetch(qrUrl);
       const result = await response.json();
 
+      console.log('QR result:', result);
+
       // Handle base64 image from proxy
       if (result.success && result.data?.image) {
         setQrCode(`data:image/png;base64,${result.data.image}`);
-        setShowQrModal(true);
       } else if (result.data?.qr || result.qr) {
         setQrCode(result.data?.qr || result.qr);
-        setShowQrModal(true);
-      } else if (result.data?.status === 'connected' || result.status === 'CONNECTED') {
+      } else if (result.data?.status === 'connect' || result.data?.status === 'connected') {
+        setShowQrModal(false);
         toast({
           title: 'Connected',
           description: 'WhatsApp sudah disambung!',
@@ -264,13 +253,15 @@ const Profile: React.FC = () => {
           .eq('id', device.id);
         await loadDevice();
       } else {
+        setShowQrModal(false);
         toast({
           title: 'Info',
-          description: 'QR code tidak tersedia. Cuba refresh status.',
+          description: result.message || 'QR code tidak tersedia. Cuba refresh status.',
         });
       }
     } catch (error: any) {
       console.error('Get QR error:', error);
+      setShowQrModal(false);
       toast({
         title: 'Error',
         description: error.message || 'Gagal mendapatkan QR code.',
@@ -317,17 +308,6 @@ const Profile: React.FC = () => {
         title: 'Error',
         description: error.message || 'Gagal memadam device.',
         variant: 'destructive',
-      });
-    }
-  };
-
-  const copyWebhookUrl = () => {
-    if (device?.webhook_id) {
-      const webhookUrl = `${window.location.origin}/api/webhook/${device.webhook_id}`;
-      navigator.clipboard.writeText(webhookUrl);
-      toast({
-        title: 'Copied',
-        description: 'Webhook URL telah disalin.',
       });
     }
   };
@@ -533,21 +513,6 @@ const Profile: React.FC = () => {
                 </div>
               </div>
 
-              {device.webhook_id && (
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Webhook URL</p>
-                      <p className="text-xs font-mono text-foreground truncate max-w-xs">
-                        {`${window.location.origin}/api/webhook/${device.webhook_id}`}
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={copyWebhookUrl}>
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )}
 
               <div className="flex flex-wrap gap-2">
                 <Button

@@ -26,7 +26,6 @@ import ReportSales from "./pages/ReportSales";
 import DashboardLogistic from "./pages/DashboardLogistic";
 import ReportPembelian from "./pages/ReportPembelian";
 import Profile from "./pages/Profile";
-import Template from "./pages/Template";
 
 const queryClient = new QueryClient();
 
@@ -53,7 +52,6 @@ const App = () => (
                   <Route path="report-sales" element={<ReportSales />} />
                   <Route path="dashboard-logistic" element={<DashboardLogistic />} />
                   <Route path="report-pembelian" element={<ReportPembelian />} />
-                  <Route path="template" element={<Template />} />
                   <Route path="logistics" element={<Logistics />} />
                   <Route path="logistics/order" element={<Logistics />} />
                   <Route path="logistics/shipment" element={<Logistics />} />

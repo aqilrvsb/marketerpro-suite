@@ -244,33 +244,6 @@ CREATE TABLE public.ninjavan_tokens (
 );
 
 -- =====================================================
--- TABLE: message_templates (WhatsApp message templates by status)
--- =====================================================
--- Templates for WhatsApp notifications based on delivery status
-CREATE TABLE public.message_templates (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  status text NOT NULL UNIQUE,              -- Delivery status (e.g., 'Pending', 'On Vehicle for Delivery', etc.)
-  template text NOT NULL,                   -- Message template with placeholders
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT message_templates_pkey PRIMARY KEY (id)
-);
-
--- Available placeholders for templates:
--- [name] = marketer_name (customer name)
--- [phone] = no_phone (customer phone)
--- [tracking] = no_tracking (tracking number)
--- [payment] = cara_bayaran (payment method)
--- [total] = harga_jualan_sebenar (total price)
--- [bundle] = produk (bundle/product name)
--- [address] = alamat (full address)
--- [city] = bandar (city)
--- [state] = negeri (state)
--- [postcode] = poskod (postcode)
--- [order_no] = no_tempahan (order number)
--- [status] = seo (current status)
-
--- =====================================================
 -- DATABASE FUNCTIONS
 -- =====================================================
 

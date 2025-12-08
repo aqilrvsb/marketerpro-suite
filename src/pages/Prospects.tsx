@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const JENIS_PROSPEK_OPTIONS = ['NP', 'EP'];
+// Jenis Prospek is now auto-determined by OrderForm based on lead date
 
 const Prospects: React.FC = () => {
   const { profile } = useAuth();
@@ -59,7 +59,6 @@ const Prospects: React.FC = () => {
     namaProspek: '',
     noTelefon: '',
     niche: '',
-    jenisProspek: '',
     tarikhPhoneNumber: '',
     adminIdStaff: '',
   });
@@ -115,7 +114,6 @@ const Prospects: React.FC = () => {
       namaProspek: '',
       noTelefon: '',
       niche: '',
-      jenisProspek: '',
       tarikhPhoneNumber: '',
       adminIdStaff: '',
     });
@@ -126,7 +124,7 @@ const Prospects: React.FC = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.namaProspek || !formData.noTelefon || !formData.niche || !formData.jenisProspek || !formData.tarikhPhoneNumber) {
+    if (!formData.namaProspek || !formData.noTelefon || !formData.niche || !formData.tarikhPhoneNumber) {
       toast({
         title: 'Error',
         description: 'Sila lengkapkan semua medan yang diperlukan.',
@@ -153,7 +151,6 @@ const Prospects: React.FC = () => {
           namaProspek: formData.namaProspek,
           noTelefon: formData.noTelefon,
           niche: formData.niche,
-          jenisProspek: formData.jenisProspek,
           tarikhPhoneNumber: formData.tarikhPhoneNumber,
           adminIdStaff: formData.adminIdStaff,
         });
@@ -166,7 +163,7 @@ const Prospects: React.FC = () => {
           namaProspek: formData.namaProspek,
           noTelefon: formData.noTelefon,
           niche: formData.niche,
-          jenisProspek: formData.jenisProspek,
+          jenisProspek: '', // Will be auto-determined by OrderForm based on lead date
           tarikhPhoneNumber: formData.tarikhPhoneNumber,
           adminIdStaff: formData.adminIdStaff,
           marketerIdStaff: '', // Will be auto-filled in DataContext for marketers
@@ -199,7 +196,6 @@ const Prospects: React.FC = () => {
       namaProspek: prospect.namaProspek || '',
       noTelefon: prospect.noTelefon || '',
       niche: prospect.niche || '',
-      jenisProspek: prospect.jenisProspek || '',
       tarikhPhoneNumber: prospect.tarikhPhoneNumber || '',
       adminIdStaff: prospect.adminIdStaff || '',
     });
@@ -274,7 +270,6 @@ const Prospects: React.FC = () => {
       const namaIdx = header.findIndex(h => h.includes('nama'));
       const phoneIdx = header.findIndex(h => h.includes('telefon') || h.includes('phone'));
       const nicheIdx = header.findIndex(h => h.includes('niche') || h.includes('product'));
-      const jenisIdx = header.findIndex(h => h.includes('jenis'));
       const tarikhIdx = header.findIndex(h => h.includes('tarikh'));
       const adminIdx = header.findIndex(h => h.includes('admin'));
 
@@ -287,7 +282,6 @@ const Prospects: React.FC = () => {
         const nama = namaIdx >= 0 ? values[namaIdx]?.toUpperCase() : '';
         const phone = phoneIdx >= 0 ? values[phoneIdx] : '';
         const nicheValue = nicheIdx >= 0 ? values[nicheIdx]?.toUpperCase() : '';
-        const jenis = jenisIdx >= 0 ? values[jenisIdx]?.toUpperCase() : '';
         const tarikh = tarikhIdx >= 0 ? values[tarikhIdx] : '';
         const admin = adminIdx >= 0 ? values[adminIdx]?.toUpperCase() : '';
 
@@ -296,7 +290,7 @@ const Prospects: React.FC = () => {
         const niche = product ? product.name : nicheValue; // Use product name if found, otherwise use raw value
 
         // Validate required fields and phone format
-        if (!nama || !phone || !niche || !jenis || !tarikh) {
+        if (!nama || !phone || !niche || !tarikh) {
           errorCount++;
           continue;
         }
@@ -306,17 +300,12 @@ const Prospects: React.FC = () => {
           continue;
         }
 
-        if (!['NP', 'EP'].includes(jenis)) {
-          errorCount++;
-          continue;
-        }
-
         try {
           await addProspect({
             namaProspek: nama,
             noTelefon: phone,
             niche: niche,
-            jenisProspek: jenis,
+            jenisProspek: '', // Will be auto-determined by OrderForm based on lead date
             tarikhPhoneNumber: tarikh,
             adminIdStaff: admin,
             marketerIdStaff: '', // Will be auto-filled in DataContext for marketers
@@ -349,15 +338,17 @@ const Prospects: React.FC = () => {
   };
 
   const exportCSV = () => {
-    const headers = ['No', 'Tarikh', 'Nama', 'Phone', 'Niche', 'Jenis Prospek', 'Admin Id'];
+    const headers = ['No', 'Tarikh', 'Nama', 'Phone', 'Niche', 'Admin Id', 'Jenis Prospek', 'Status', 'Price'];
     const rows = filteredProspects.map((prospect, idx) => [
       idx + 1,
       prospect.tarikhPhoneNumber || '-',
       prospect.namaProspek,
       prospect.noTelefon,
       prospect.niche,
-      prospect.jenisProspek,
       prospect.adminIdStaff || '-',
+      prospect.jenisProspek || '-', // Determined by OrderForm
+      prospect.statusClosed || '-',
+      prospect.priceClosed > 0 ? prospect.priceClosed.toFixed(2) : '-',
     ]);
 
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -448,17 +439,6 @@ const Prospects: React.FC = () => {
                       <SelectContent>
                         {products.map((product) => (
                           <SelectItem key={product.id} value={product.name}>{product.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="jenisProspek">Jenis Prospek *</Label>
-                    <Select value={formData.jenisProspek} onValueChange={(value) => handleChange('jenisProspek', value)}>
-                      <SelectTrigger><SelectValue placeholder="Pilih jenis" /></SelectTrigger>
-                      <SelectContent>
-                        {JENIS_PROSPEK_OPTIONS.map((type) => (
-                          <SelectItem key={type} value={type}>{type}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -719,7 +699,6 @@ const Prospects: React.FC = () => {
                     <th className="text-left py-2 px-2 font-semibold">Nama</th>
                     <th className="text-left py-2 px-2 font-semibold">Telefon</th>
                     <th className="text-left py-2 px-2 font-semibold">Niche</th>
-                    <th className="text-left py-2 px-2 font-semibold">Jenis</th>
                     <th className="text-left py-2 px-2 font-semibold">Tarikh</th>
                     <th className="text-left py-2 px-2 font-semibold">Admin</th>
                   </tr>
@@ -729,7 +708,6 @@ const Prospects: React.FC = () => {
                     <td className="py-2 px-2">ALI BIN ABU</td>
                     <td className="py-2 px-2">60123456789</td>
                     <td className="py-2 px-2">PRODUCT NAME</td>
-                    <td className="py-2 px-2">NP</td>
                     <td className="py-2 px-2">2024-01-15</td>
                     <td className="py-2 px-2">AD-001</td>
                   </tr>
@@ -737,7 +715,6 @@ const Prospects: React.FC = () => {
                     <td className="py-2 px-2">SITI AMINAH</td>
                     <td className="py-2 px-2">60198765432</td>
                     <td className="py-2 px-2">ANOTHER PRODUCT</td>
-                    <td className="py-2 px-2">EP</td>
                     <td className="py-2 px-2">2024-01-16</td>
                     <td className="py-2 px-2"></td>
                   </tr>
@@ -750,10 +727,12 @@ const Prospects: React.FC = () => {
                 <li><strong>Nama</strong> - Nama prospek (wajib)</li>
                 <li><strong>Telefon</strong> - No. telefon, mesti bermula dengan 6 (wajib)</li>
                 <li><strong>Niche</strong> - Nama produk dari senarai Product (wajib)</li>
-                <li><strong>Jenis</strong> - Jenis prospek: NP atau EP sahaja (wajib)</li>
                 <li><strong>Tarikh</strong> - Format: YYYY-MM-DD (wajib)</li>
                 <li><strong>Admin</strong> - Admin ID Staff (optional)</li>
               </ul>
+              <p className="mt-2 text-amber-600 dark:text-amber-400">
+                <strong>Nota:</strong> Jenis Prospek (NP/EP) akan ditentukan secara automatik semasa membuat order.
+              </p>
             </div>
           </div>
           <DialogFooter>

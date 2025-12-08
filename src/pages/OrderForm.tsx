@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
-const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC'];
+const CUSTOMER_TYPE_OPTIONS = ['Prospect', 'EC'];
 const JENIS_CLOSING_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call'];
 const JENIS_CLOSING_MARKETPLACE_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call', 'Live', 'Shop'];
 const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
@@ -69,6 +69,9 @@ const OrderForm: React.FC = () => {
   const [tarikhBayaran, setTarikhBayaran] = useState<Date>();
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string>('');
+  // Determined customer type (NP/EP) based on lead lookup when "Prospect" is selected
+  const [determinedCustomerType, setDeterminedCustomerType] = useState<'NP' | 'EP' | ''>('');
+  const [isCheckingLead, setIsCheckingLead] = useState(false);
 
   // Edit mode state
   const editOrder = location.state?.editOrder;
@@ -98,12 +101,20 @@ const OrderForm: React.FC = () => {
   // Populate form if editing
   useEffect(() => {
     if (editOrder) {
+      // Convert old NP/EP values to "Prospect" for display, and store the original type
+      const originalType = editOrder.jenisCustomer || '';
+      let displayType = originalType;
+      if (originalType === 'NP' || originalType === 'EP') {
+        displayType = 'Prospect';
+        setDeterminedCustomerType(originalType as 'NP' | 'EP');
+      }
+
       setFormData({
         namaPelanggan: editOrder.marketerName || '',
         noPhone: editOrder.noPhone || '',
         jenisPlatform: editOrder.jenisPlatform || '',
         jenisClosing: editOrder.jenisClosing || '',
-        jenisCustomer: editOrder.jenisCustomer || '',
+        jenisCustomer: displayType,
         poskod: editOrder.poskod || '',
         daerah: editOrder.bandar || '',
         negeri: editOrder.negeri || '',
@@ -128,6 +139,46 @@ const OrderForm: React.FC = () => {
     refreshBundles();
   }, []);
 
+  // Check lead when phone number changes and customer type is "Prospect"
+  useEffect(() => {
+    const checkLead = async () => {
+      // Only check if customer type is "Prospect" and phone number is valid
+      if (formData.jenisCustomer === 'Prospect' && formData.noPhone && formData.noPhone.startsWith('6') && formData.noPhone.length >= 10) {
+        setIsCheckingLead(true);
+        try {
+          const result = await checkLeadAndDetermineType(formData.noPhone);
+          setDeterminedCustomerType(result.type);
+
+          // Update price based on determined type
+          if (formData.produk) {
+            const newPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, 'Prospect');
+            setFormData(prev => ({ ...prev, hargaJualan: newPrice }));
+          }
+
+          toast({
+            title: result.type === 'NP' ? 'Lead Ditemui (NP)' : 'Lead Ditemui (EP)',
+            description: result.isNewLead
+              ? 'Lead baru akan dicipta secara automatik.'
+              : `Lead sedia ada - ${result.type === 'NP' ? 'Tarikh sama (New Prospect)' : 'Tarikh berbeza (Existing Prospect)'}`,
+          });
+        } catch (err) {
+          console.error('Error checking lead:', err);
+          // Default to EP if error
+          setDeterminedCustomerType('EP');
+        } finally {
+          setIsCheckingLead(false);
+        }
+      } else if (formData.jenisCustomer === 'EC') {
+        // Clear determined type for EC customers
+        setDeterminedCustomerType('');
+      }
+    };
+
+    // Debounce the check
+    const timeoutId = setTimeout(checkLead, 500);
+    return () => clearTimeout(timeoutId);
+  }, [formData.noPhone, formData.jenisCustomer]);
+
   const generateOrderNumber = () => {
     // Generate unique order number using timestamp + random suffix
     const timestamp = Date.now();
@@ -147,31 +198,94 @@ const OrderForm: React.FC = () => {
     return data as string;
   };
 
+  // Check lead by phone number and determine NP/EP
+  const checkLeadAndDetermineType = async (phoneNumber: string): Promise<{ type: 'NP' | 'EP'; leadId?: string; isNewLead?: boolean }> => {
+    const marketerIdStaff = profile?.username || '';
+    const today = new Date().toISOString().split('T')[0];
+
+    // Search for existing lead by phone number for this marketer
+    const { data: existingLead } = await supabase
+      .from('prospects')
+      .select('id, tarikh_phone_number')
+      .eq('marketer_id_staff', marketerIdStaff)
+      .eq('no_telefon', phoneNumber)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingLead) {
+      // Lead exists - check if same date as today
+      if (existingLead.tarikh_phone_number === today) {
+        // Same date = NP (New Prospect)
+        return { type: 'NP', leadId: existingLead.id };
+      } else {
+        // Different date = EP (Existing Prospect)
+        return { type: 'EP', leadId: existingLead.id };
+      }
+    } else {
+      // Lead doesn't exist - set as EP and will auto-create with last month's date
+      return { type: 'EP', isNewLead: true };
+    }
+  };
+
+  // Auto-create lead with last month's date
+  const autoCreateLead = async (phoneNumber: string, customerName: string, productName: string) => {
+    const marketerIdStaff = profile?.username || '';
+
+    // Calculate last month's date
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const lastMonthDate = lastMonth.toISOString().split('T')[0];
+
+    const { error } = await supabase
+      .from('prospects')
+      .insert({
+        nama_prospek: customerName.toUpperCase(),
+        no_telefon: phoneNumber,
+        niche: productName,
+        jenis_prospek: 'EP', // Auto-determined as EP since lead didn't exist
+        tarikh_phone_number: lastMonthDate,
+        marketer_id_staff: marketerIdStaff,
+        admin_id_staff: '',
+        status_closed: '',
+        price_closed: 0,
+      });
+
+    if (error) {
+      console.error('Error auto-creating lead:', error);
+    }
+  };
+
   // Get minimum price based on platform, customer type and selected bundle
   const getMinimumPrice = (bundleName: string, platform: string, customerType: string): number => {
     const bundle = activeBundles.find(b => b.name === bundleName);
     if (!bundle) return 0;
 
+    // If customer type is "Prospect", use the determined type (NP/EP)
+    const effectiveType = customerType === 'Prospect' ? (determinedCustomerType || 'NP') : customerType;
+
     // Determine price based on platform and customer type
     if (platform === 'Shopee') {
-      if (customerType === 'NP') return bundle.priceShopeeNp;
-      if (customerType === 'EP') return bundle.priceShopeeEp;
-      if (customerType === 'EC') return bundle.priceShopeeEc;
+      if (effectiveType === 'NP') return bundle.priceShopeeNp;
+      if (effectiveType === 'EP') return bundle.priceShopeeEp;
+      if (effectiveType === 'EC') return bundle.priceShopeeEc;
       return bundle.priceShopeeNp; // Default to NP
     } else if (platform === 'Tiktok') {
-      if (customerType === 'NP') return bundle.priceTiktokNp;
-      if (customerType === 'EP') return bundle.priceTiktokEp;
-      if (customerType === 'EC') return bundle.priceTiktokEc;
+      if (effectiveType === 'NP') return bundle.priceTiktokNp;
+      if (effectiveType === 'EP') return bundle.priceTiktokEp;
+      if (effectiveType === 'EC') return bundle.priceTiktokEc;
       return bundle.priceTiktokNp; // Default to NP
     } else {
       // Normal price (Facebook, Database, Google)
-      if (customerType === 'NP') return bundle.priceNormalNp;
-      if (customerType === 'EP') return bundle.priceNormalEp;
-      if (customerType === 'EC') return bundle.priceNormalEc;
+      if (effectiveType === 'NP') return bundle.priceNormalNp;
+      if (effectiveType === 'EP') return bundle.priceNormalEp;
+      if (effectiveType === 'EC') return bundle.priceNormalEc;
       return bundle.priceNormalNp; // Default to NP
     }
   };
 
+  // Get effective customer type for price calculation
+  const effectiveCustomerType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
   const currentMinPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, formData.jenisCustomer);
   const isPriceBelowMinimum = formData.hargaJualan > 0 && formData.hargaJualan < currentMinPrice;
 
@@ -254,12 +368,22 @@ const OrderForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
-    if (!formData.namaPelanggan || !formData.noPhone || !formData.poskod || !formData.daerah || !formData.negeri || !formData.alamat || !formData.produk || !formData.jenisClosing || !formData.caraBayaran) {
+    if (!formData.namaPelanggan || !formData.noPhone || !formData.poskod || !formData.daerah || !formData.negeri || !formData.alamat || !formData.produk || !formData.jenisClosing || !formData.caraBayaran || !formData.jenisCustomer) {
       toast({
         title: 'Error',
         description: 'Sila lengkapkan semua medan yang diperlukan.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate that Prospect has a determined type
+    if (formData.jenisCustomer === 'Prospect' && !determinedCustomerType && !isEditMode) {
+      toast({
+        title: 'Error',
+        description: 'Sila tunggu semakan lead selesai sebelum submit.',
         variant: 'destructive',
       });
       return;
@@ -303,11 +427,12 @@ const OrderForm: React.FC = () => {
     }
 
     // Validate minimum price
-    const minPrice = getMinimumPrice(formData.produk, formData.jenisPlatform);
+    const minPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, formData.jenisCustomer);
     if (formData.hargaJualan < minPrice) {
+      const effectiveType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
       toast({
         title: 'Error',
-        description: `Harga jualan minimum untuk ${formData.jenisPlatform || 'produk ini'} adalah RM${minPrice.toFixed(2)}.`,
+        description: `Harga jualan minimum untuk ${effectiveType || formData.jenisCustomer} (${formData.jenisPlatform || 'produk ini'}) adalah RM${minPrice.toFixed(2)}.`,
         variant: 'destructive',
       });
       return;
@@ -494,6 +619,9 @@ const OrderForm: React.FC = () => {
         // Get units from selected bundle for edit mode
         const editBundleUnits = activeBundles.find(b => b.name === formData.produk)?.units || 1;
 
+        // Determine final customer type to save for edit mode
+        const editFinalCustomerType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
+
         // Update existing order in database
         const { error: updateError } = await supabase
           .from('customer_orders')
@@ -513,7 +641,7 @@ const OrderForm: React.FC = () => {
             kurier,
             no_tracking: trackingNumber,
             jenis_platform: formData.jenisPlatform,
-            jenis_customer: formData.jenisCustomer,
+            jenis_customer: editFinalCustomerType, // Save as NP/EP/EC, not "Prospect"
             cara_bayaran: formData.caraBayaran,
             nota_staff: formData.nota,
             // Payment details
@@ -640,6 +768,9 @@ const OrderForm: React.FC = () => {
         const selectedBundle = activeBundles.find(b => b.name === formData.produk);
         const bundleUnits = selectedBundle?.units || 1;
 
+        // Determine final customer type to save: use determined type for Prospect, otherwise use EC
+        const finalCustomerType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
+
         await addOrder({
           noTempahan: orderNumber,
           idSale: idSale,
@@ -667,7 +798,7 @@ const OrderForm: React.FC = () => {
           dateOrder,
           dateProcessed: '',
           jenisPlatform: formData.jenisPlatform,
-          jenisCustomer: formData.jenisCustomer,
+          jenisCustomer: finalCustomerType, // Save as NP/EP/EC, not "Prospect"
           caraBayaran: formData.caraBayaran,
           notaStaff: formData.nota,
           beratParcel: 0,
@@ -704,33 +835,59 @@ const OrderForm: React.FC = () => {
           console.error('Failed to send notification:', notifyErr);
         }
 
-        // If NP or EP, find lead from this marketer matching phone number and update status_closed and price_closed
-        if (formData.jenisCustomer === 'NP' || formData.jenisCustomer === 'EP') {
+        // Handle lead update/creation for Prospect customer type
+        if (formData.jenisCustomer === 'Prospect') {
           try {
             const marketerIdStaff = profile?.username || '';
 
+            // Check if lead exists
             const { data: matchingLead } = await supabase
               .from('prospects')
               .select('id')
               .eq('marketer_id_staff', marketerIdStaff)
               .eq('no_telefon', formData.noPhone)
-              .eq('jenis_prospek', formData.jenisCustomer)
               .order('created_at', { ascending: false })
               .limit(1)
               .single();
 
             if (matchingLead) {
+              // Update existing lead with determined type and mark as closed
               await supabase
                 .from('prospects')
                 .update({
+                  jenis_prospek: finalCustomerType, // Set the determined NP/EP type
                   status_closed: 'closed',
                   price_closed: formData.hargaJualan,
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', matchingLead.id);
+            } else {
+              // Auto-create lead with last month's date (for EP cases where lead doesn't exist)
+              await autoCreateLead(formData.noPhone, formData.namaPelanggan, formData.produk);
+
+              // Then update the newly created lead as closed
+              const { data: newLead } = await supabase
+                .from('prospects')
+                .select('id')
+                .eq('marketer_id_staff', marketerIdStaff)
+                .eq('no_telefon', formData.noPhone)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+              if (newLead) {
+                await supabase
+                  .from('prospects')
+                  .update({
+                    status_closed: 'closed',
+                    price_closed: formData.hargaJualan,
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', newLead.id);
+              }
             }
           } catch (err) {
-            console.error('Error updating prospect:', err);
+            console.error('Error updating/creating prospect:', err);
           }
         }
 
@@ -862,6 +1019,28 @@ const OrderForm: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Show determined type when Prospect is selected */}
+              {formData.jenisCustomer === 'Prospect' && (
+                <div className="mt-1.5">
+                  {isCheckingLead ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Menyemak lead...
+                    </p>
+                  ) : determinedCustomerType ? (
+                    <p className={cn(
+                      "text-xs font-medium",
+                      determinedCustomerType === 'NP' ? "text-green-600" : "text-purple-600"
+                    )}>
+                      Auto: {determinedCustomerType === 'NP' ? 'New Prospect (NP)' : 'Existing Prospect (EP)'}
+                    </p>
+                  ) : formData.noPhone && formData.noPhone.length >= 10 ? null : (
+                    <p className="text-xs text-muted-foreground">
+                      Masukkan no. telefon untuk menyemak lead
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Poskod */}

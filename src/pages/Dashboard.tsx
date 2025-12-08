@@ -297,6 +297,8 @@ const Dashboard: React.FC = () => {
 
     // Total Lead
     const totalLead = filteredProspects.length;
+    const totalLeadNP = filteredProspects.filter(p => p.jenisProspek === 'NP').length;
+    const totalLeadEP = filteredProspects.filter(p => p.jenisProspek === 'EP').length;
 
     // Closed leads (prospects with statusClosed not empty)
     const closedLeads = filteredProspects.filter(p => p.statusClosed && p.statusClosed.trim() !== '').length;
@@ -369,6 +371,8 @@ const Dashboard: React.FC = () => {
       salesShop,
       shopPercent,
       totalLead,
+      totalLeadNP,
+      totalLeadEP,
       averageKPK,
       closingRate,
     };
@@ -541,6 +545,8 @@ const Dashboard: React.FC = () => {
 
     // Total Lead (all marketers)
     const totalLead = filteredAllProspects.length;
+    const totalLeadNP = filteredAllProspects.filter(p => p.jenis_prospek === 'NP').length;
+    const totalLeadEP = filteredAllProspects.filter(p => p.jenis_prospek === 'EP').length;
 
     // Closed leads
     const closedLeads = filteredAllProspects.filter(p => p.status_closed && p.status_closed.trim() !== '').length;
@@ -613,6 +619,8 @@ const Dashboard: React.FC = () => {
       salesShop,
       shopPercent,
       totalLead,
+      totalLeadNP,
+      totalLeadEP,
       averageKPK,
       closingRate,
     };
@@ -1053,7 +1061,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Lead Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {/* Total Lead */}
           <div className="stat-card">
             <div className="flex items-center gap-2 text-indigo-600 mb-2">
@@ -1062,6 +1070,26 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-foreground">{marketerStats.totalLead}</p>
             <p className="text-xs text-muted-foreground mt-1">Prospects in period</p>
+          </div>
+
+          {/* Total Lead NP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <UserPlus className="w-5 h-5" />
+              <span className="text-sm font-medium">LEAD NP</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{marketerStats.totalLeadNP}</p>
+            <p className="text-xs text-muted-foreground mt-1">New Prospect</p>
+          </div>
+
+          {/* Total Lead EP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-purple-600 mb-2">
+              <UserCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">LEAD EP</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{marketerStats.totalLeadEP}</p>
+            <p className="text-xs text-muted-foreground mt-1">Existing Prospect</p>
           </div>
 
           {/* Average KPK */}
@@ -1560,7 +1588,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Lead Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {/* Total Lead */}
           <div className="stat-card">
             <div className="flex items-center gap-2 text-indigo-600 mb-2">
@@ -1569,6 +1597,26 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-2xl font-bold text-foreground">{bodStats.totalLead}</p>
             <p className="text-xs text-muted-foreground mt-1">Prospects in period</p>
+          </div>
+
+          {/* Total Lead NP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <UserPlus className="w-5 h-5" />
+              <span className="text-sm font-medium">LEAD NP</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{bodStats.totalLeadNP}</p>
+            <p className="text-xs text-muted-foreground mt-1">New Prospect</p>
+          </div>
+
+          {/* Total Lead EP */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-purple-600 mb-2">
+              <UserCheck className="w-5 h-5" />
+              <span className="text-sm font-medium">LEAD EP</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{bodStats.totalLeadEP}</p>
+            <p className="text-xs text-muted-foreground mt-1">Existing Prospect</p>
           </div>
 
           {/* Average KPK */}

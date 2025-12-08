@@ -26,6 +26,8 @@ import ReportSales from "./pages/ReportSales";
 import DashboardLogistic from "./pages/DashboardLogistic";
 import ReportPembelian from "./pages/ReportPembelian";
 import Profile from "./pages/Profile";
+import PNL from "./pages/PNL";
+import PNLConfig from "./pages/PNLConfig";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +51,8 @@ const App = () => (
                   <Route path="spend" element={<Spend />} />
                   <Route path="reporting-spend" element={<ReportingSpend />} />
                   <Route path="top10" element={<Top10 />} />
+                  <Route path="pnl" element={<PNL />} />
+                  <Route path="pnl-config" element={<PNLConfig />} />
                   <Route path="report-sales" element={<ReportSales />} />
                   <Route path="dashboard-logistic" element={<DashboardLogistic />} />
                   <Route path="report-pembelian" element={<ReportPembelian />} />

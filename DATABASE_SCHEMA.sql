@@ -244,6 +244,24 @@ CREATE TABLE public.ninjavan_tokens (
 );
 
 -- =====================================================
+-- TABLE: pnl_config (PNL salary tier configuration)
+-- =====================================================
+-- Configured by BOD for marketer/admin salary calculation
+CREATE TABLE public.pnl_config (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  role text NOT NULL DEFAULT 'marketer',    -- 'marketer' or 'admin'
+  min_sales numeric NOT NULL DEFAULT 0,     -- Minimum sales threshold
+  max_sales numeric,                         -- Maximum sales threshold (null = no limit)
+  roas_min numeric NOT NULL DEFAULT 0,      -- Minimum ROAS requirement
+  roas_max numeric NOT NULL DEFAULT 99,     -- Maximum ROAS range
+  commission_percent numeric NOT NULL DEFAULT 0,  -- Commission % of net sales
+  bonus_amount numeric NOT NULL DEFAULT 0,  -- Fixed bonus amount
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT pnl_config_pkey PRIMARY KEY (id),
+  CONSTRAINT pnl_config_role_check CHECK (role IN ('marketer', 'admin'))
+);
+
+-- =====================================================
 -- DATABASE FUNCTIONS
 -- =====================================================
 

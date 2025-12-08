@@ -23,6 +23,7 @@ import {
   UserCircle,
   RotateCcw,
   FileSpreadsheet,
+  Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,9 +78,21 @@ const navItems: NavItem[] = [
     roles: ['marketer', 'admin', 'bod'],
   },
   {
+    label: 'PNL',
+    path: '/dashboard/pnl',
+    icon: <Receipt className="w-5 h-5" />,
+    roles: ['marketer', 'admin'],
+  },
+  {
     label: 'Report Sales',
     path: '/dashboard/report-sales',
     icon: <FileSpreadsheet className="w-5 h-5" />,
+    roles: ['bod'],
+  },
+  {
+    label: 'PNL Config',
+    path: '/dashboard/pnl-config',
+    icon: <Receipt className="w-5 h-5" />,
     roles: ['bod'],
   },
   {

@@ -32,25 +32,23 @@ async function sendWhatsApp(instance: string, phone: string, message: string): P
   }
 }
 
-// Generate order registered notification message
+// Generate order registered notification message (for webhook - no tracking number yet)
 function generateOrderRegisteredMessage(order: {
   marketer_name: string
   no_phone: string
   produk: string
   harga_jualan_sebenar: number
   cara_bayaran: string
-  no_tracking?: string
+  tarikh_tempahan: string
 }): string {
-  return `*Pesanan Anda Sudah Didaftarkan*
+  return `*Pesanan Anda Sudah Ditempah*
 
 Nama : ${order.marketer_name}
 Phone : ${order.no_phone}
 Pakej : ${order.produk}
+Tarikh Membeli : ${order.tarikh_tempahan}
 Harga Jualan : RM${order.harga_jualan_sebenar?.toFixed(2) || '0.00'}
-Cara Bayaran : ${order.cara_bayaran}
-Tracking Number : ${order.no_tracking || '-'}
-
-Terima kasih kerana membeli dengan kami! 🙏`
+Cara Bayaran : ${order.cara_bayaran}`
 }
 
 /**
@@ -379,7 +377,7 @@ export default async function handler(req: any, res: any) {
           produk: orderData.produk,
           harga_jualan_sebenar: productPrice,
           cara_bayaran: orderData.bayaran,
-          no_tracking: undefined
+          tarikh_tempahan: tarikhTempahan
         })
 
         whatsappSent = await sendWhatsApp(deviceSettings[0].instance, formattedPhone, message)

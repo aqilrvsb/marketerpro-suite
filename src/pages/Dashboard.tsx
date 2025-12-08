@@ -242,6 +242,14 @@ const Dashboard: React.FC = () => {
     const salesEP = filteredOrders.filter(o => o.jenisCustomer === 'EP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
     const salesEC = filteredOrders.filter(o => o.jenisCustomer === 'EC').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
 
+    // Sales by Jenis Closing
+    const salesManual = filteredOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const salesWhatsappBot = filteredOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const salesWebsite = filteredOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const salesCall = filteredOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const salesLive = filteredOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const salesShop = filteredOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+
     // Total Lead
     const totalLead = filteredProspects.length;
 
@@ -264,6 +272,12 @@ const Dashboard: React.FC = () => {
     const npPercent = totalSales > 0 ? (salesNP / totalSales) * 100 : 0;
     const epPercent = totalSales > 0 ? (salesEP / totalSales) * 100 : 0;
     const ecPercent = totalSales > 0 ? (salesEC / totalSales) * 100 : 0;
+    const manualPercent = totalSales > 0 ? (salesManual / totalSales) * 100 : 0;
+    const whatsappBotPercent = totalSales > 0 ? (salesWhatsappBot / totalSales) * 100 : 0;
+    const websitePercent = totalSales > 0 ? (salesWebsite / totalSales) * 100 : 0;
+    const callPercent = totalSales > 0 ? (salesCall / totalSales) * 100 : 0;
+    const livePercent = totalSales > 0 ? (salesLive / totalSales) * 100 : 0;
+    const shopPercent = totalSales > 0 ? (salesShop / totalSales) * 100 : 0;
 
     return {
       totalSales,
@@ -287,6 +301,18 @@ const Dashboard: React.FC = () => {
       epPercent,
       salesEC,
       ecPercent,
+      salesManual,
+      manualPercent,
+      salesWhatsappBot,
+      whatsappBotPercent,
+      salesWebsite,
+      websitePercent,
+      salesCall,
+      callPercent,
+      salesLive,
+      livePercent,
+      salesShop,
+      shopPercent,
       totalLead,
       averageKPK,
       closingRate,
@@ -406,6 +432,14 @@ const Dashboard: React.FC = () => {
     const salesEP = filteredAllOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
     const salesEC = filteredAllOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
 
+    // Sales by Jenis Closing
+    const salesManual = filteredAllOrders.filter(o => o.jenis_closing === 'Manual').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesWhatsappBot = filteredAllOrders.filter(o => o.jenis_closing === 'WhatsappBot').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesWebsite = filteredAllOrders.filter(o => o.jenis_closing === 'Website').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesCall = filteredAllOrders.filter(o => o.jenis_closing === 'Call').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesLive = filteredAllOrders.filter(o => o.jenis_closing === 'Live').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+    const salesShop = filteredAllOrders.filter(o => o.jenis_closing === 'Shop').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
+
     // Total Lead (all marketers)
     const totalLead = filteredAllProspects.length;
 
@@ -428,6 +462,12 @@ const Dashboard: React.FC = () => {
     const npPercent = totalSales > 0 ? (salesNP / totalSales) * 100 : 0;
     const epPercent = totalSales > 0 ? (salesEP / totalSales) * 100 : 0;
     const ecPercent = totalSales > 0 ? (salesEC / totalSales) * 100 : 0;
+    const manualPercent = totalSales > 0 ? (salesManual / totalSales) * 100 : 0;
+    const whatsappBotPercent = totalSales > 0 ? (salesWhatsappBot / totalSales) * 100 : 0;
+    const websitePercent = totalSales > 0 ? (salesWebsite / totalSales) * 100 : 0;
+    const callPercent = totalSales > 0 ? (salesCall / totalSales) * 100 : 0;
+    const livePercent = totalSales > 0 ? (salesLive / totalSales) * 100 : 0;
+    const shopPercent = totalSales > 0 ? (salesShop / totalSales) * 100 : 0;
 
     return {
       totalSales,
@@ -451,6 +491,18 @@ const Dashboard: React.FC = () => {
       epPercent,
       salesEC,
       ecPercent,
+      salesManual,
+      manualPercent,
+      salesWhatsappBot,
+      whatsappBotPercent,
+      salesWebsite,
+      websitePercent,
+      salesCall,
+      callPercent,
+      salesLive,
+      livePercent,
+      salesShop,
+      shopPercent,
       totalLead,
       averageKPK,
       closingRate,
@@ -734,6 +786,73 @@ const Dashboard: React.FC = () => {
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.googlePercent)}</p>
           </div>
+        </div>
+
+        {/* Jenis Closing Sales Row */}
+        <div className={`grid grid-cols-2 gap-4 ${(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) ? 'md:grid-cols-6' : 'md:grid-cols-4'}`}>
+          {/* Sales Manual */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-slate-600 mb-2">
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING MANUAL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesManual)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.manualPercent)}</p>
+          </div>
+
+          {/* Sales WhatsappBot */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WA BOT</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWhatsappBot)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.whatsappBotPercent)}</p>
+          </div>
+
+          {/* Sales Website */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+              <SearchIcon className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WEBSITE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWebsite)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.websitePercent)}</p>
+          </div>
+
+          {/* Sales Call */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-sky-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING CALL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesCall)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.callPercent)}</p>
+          </div>
+
+          {/* Sales Live - Only show if there are Tiktok or Shopee sales */}
+          {(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) && (
+            <div className="stat-card">
+              <div className="flex items-center gap-2 text-rose-600 mb-2">
+                <Play className="w-5 h-5" />
+                <span className="text-sm font-medium">CLOSING LIVE</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesLive)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.livePercent)}</p>
+            </div>
+          )}
+
+          {/* Sales Shop - Only show if there are Tiktok or Shopee sales */}
+          {(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) && (
+            <div className="stat-card">
+              <div className="flex items-center gap-2 text-orange-500 mb-2">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="text-sm font-medium">CLOSING SHOP</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesShop)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.shopPercent)}</p>
+            </div>
+          )}
         </div>
 
         {/* Customer Type Sales Row */}
@@ -1119,6 +1238,73 @@ const Dashboard: React.FC = () => {
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.googlePercent)}</p>
           </div>
+        </div>
+
+        {/* Jenis Closing Sales Row */}
+        <div className={`grid grid-cols-2 gap-4 ${(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) ? 'md:grid-cols-6' : 'md:grid-cols-4'}`}>
+          {/* Sales Manual */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-slate-600 mb-2">
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING MANUAL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesManual)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.manualPercent)}</p>
+          </div>
+
+          {/* Sales WhatsappBot */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WA BOT</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWhatsappBot)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.whatsappBotPercent)}</p>
+          </div>
+
+          {/* Sales Website */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+              <SearchIcon className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WEBSITE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWebsite)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.websitePercent)}</p>
+          </div>
+
+          {/* Sales Call */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-sky-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING CALL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesCall)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.callPercent)}</p>
+          </div>
+
+          {/* Sales Live - Only show if there are Tiktok or Shopee sales */}
+          {(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) && (
+            <div className="stat-card">
+              <div className="flex items-center gap-2 text-rose-600 mb-2">
+                <Play className="w-5 h-5" />
+                <span className="text-sm font-medium">CLOSING LIVE</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesLive)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.livePercent)}</p>
+            </div>
+          )}
+
+          {/* Sales Shop - Only show if there are Tiktok or Shopee sales */}
+          {(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) && (
+            <div className="stat-card">
+              <div className="flex items-center gap-2 text-orange-500 mb-2">
+                <ShoppingBag className="w-5 h-5" />
+                <span className="text-sm font-medium">CLOSING SHOP</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShop)}</p>
+              <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopPercent)}</p>
+            </div>
+          )}
         </div>
 
         {/* Customer Type Sales Row */}

@@ -14,7 +14,7 @@ interface CustomerOrder {
   kurier: string; noTracking: string; statusParcel: string;
   notaStaff: string; beratParcel: number; createdAt: string;
   deliveryStatus: string; dateOrder: string; dateProcessed: string; dateReturn: string;
-  jenisPlatform: string; jenisCustomer: string; caraBayaran: string;
+  jenisPlatform: string; jenisCustomer: string; jenisClosing: string; caraBayaran: string;
   tarikhBayaran: string; jenisBayaran: string; bank: string; receiptImageUrl: string; waybillUrl: string;
   seo: string;
 }
@@ -64,7 +64,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     notaStaff: d.nota_staff || '', beratParcel: d.berat_parcel || 0, createdAt: d.created_at,
     deliveryStatus: d.delivery_status || 'Pending', dateOrder: d.date_order || '', dateProcessed: d.date_processed || '',
     dateReturn: d.date_return || '',
-    jenisPlatform: d.jenis_platform || '', jenisCustomer: d.jenis_customer || '', caraBayaran: d.cara_bayaran || '',
+    jenisPlatform: d.jenis_platform || '', jenisCustomer: d.jenis_customer || '', jenisClosing: d.jenis_closing || '', caraBayaran: d.cara_bayaran || '',
     tarikhBayaran: d.tarikh_bayaran || '', jenisBayaran: d.jenis_bayaran || '', bank: d.bank || '', receiptImageUrl: d.receipt_image_url || '', waybillUrl: d.waybill_url || '',
     seo: d.seo || '',
   });
@@ -110,7 +110,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       kurier: order.kurier, no_tracking: order.noTracking, status_parcel: order.statusParcel,
       nota_staff: order.notaStaff, berat_parcel: order.beratParcel,
       delivery_status: order.deliveryStatus, date_order: order.dateOrder,
-      jenis_platform: order.jenisPlatform, jenis_customer: order.jenisCustomer, cara_bayaran: order.caraBayaran,
+      jenis_platform: order.jenisPlatform, jenis_customer: order.jenisCustomer, jenis_closing: order.jenisClosing, cara_bayaran: order.caraBayaran,
       tarikh_bayaran: order.tarikhBayaran || null, jenis_bayaran: order.jenisBayaran || null,
       bank: order.bank || null, receipt_image_url: order.receiptImageUrl || null, waybill_url: order.waybillUrl || null,
     });

@@ -29,6 +29,8 @@ import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
 const CUSTOMER_TYPE_OPTIONS = ['NP', 'EP', 'EC'];
+const JENIS_CLOSING_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call'];
+const JENIS_CLOSING_MARKETPLACE_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call', 'Live', 'Shop'];
 const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
 const JENIS_BAYARAN_OPTIONS = ['Online Transfer', 'Credit Card', 'CDM', 'CASH'];
 const BANK_OPTIONS = [
@@ -76,6 +78,7 @@ const OrderForm: React.FC = () => {
     namaPelanggan: '',
     noPhone: '',
     jenisPlatform: '',
+    jenisClosing: '',
     jenisCustomer: '',
     poskod: '',
     daerah: '',
@@ -99,6 +102,7 @@ const OrderForm: React.FC = () => {
         namaPelanggan: editOrder.marketerName || '',
         noPhone: editOrder.noPhone || '',
         jenisPlatform: editOrder.jenisPlatform || '',
+        jenisClosing: editOrder.jenisClosing || '',
         jenisCustomer: editOrder.jenisCustomer || '',
         poskod: editOrder.poskod || '',
         daerah: editOrder.bandar || '',
@@ -252,7 +256,7 @@ const OrderForm: React.FC = () => {
     e.preventDefault();
     
     // Validation
-    if (!formData.namaPelanggan || !formData.noPhone || !formData.poskod || !formData.daerah || !formData.negeri || !formData.alamat || !formData.produk || !formData.caraBayaran) {
+    if (!formData.namaPelanggan || !formData.noPhone || !formData.poskod || !formData.daerah || !formData.negeri || !formData.alamat || !formData.produk || !formData.jenisClosing || !formData.caraBayaran) {
       toast({
         title: 'Error',
         description: 'Sila lengkapkan semua medan yang diperlukan.',
@@ -674,6 +678,32 @@ const OrderForm: React.FC = () => {
           waybillUrl: waybillUrl,
         });
 
+        // Send WhatsApp notification to customer
+        try {
+          const notificationResponse = await fetch('/api/send-order-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              order: {
+                marketer_name: formData.namaPelanggan,
+                no_phone: formData.noPhone,
+                produk: formData.produk,
+                tarikh_tempahan: tarikhTempahan,
+                no_tracking: trackingNumber,
+                harga_jualan_sebenar: formData.hargaJualan,
+                cara_bayaran: formData.caraBayaran,
+              },
+              marketer_id: profile?.id,
+            }),
+          });
+          const notificationResult = await notificationResponse.json();
+          if (notificationResult.whatsapp_sent) {
+            console.log('WhatsApp notification sent to customer');
+          }
+        } catch (notifyErr) {
+          console.error('Failed to send notification:', notifyErr);
+        }
+
         // If NP or EP, find lead from this marketer matching phone number and update status_closed and price_closed
         if (formData.jenisCustomer === 'NP' || formData.jenisCustomer === 'EP') {
           try {
@@ -787,6 +817,28 @@ const OrderForm: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {PLATFORM_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Jenis Closing */}
+            <div>
+              <FormLabel required>Jenis Closing</FormLabel>
+              <Select
+                value={formData.jenisClosing}
+                onValueChange={(value) => handleChange('jenisClosing', value)}
+                disabled={isEditMode && profile?.role === 'marketer'}
+              >
+                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
+                  <SelectValue placeholder="Pilih Jenis Closing" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(formData.jenisPlatform === 'Shopee' || formData.jenisPlatform === 'Tiktok'
+                    ? JENIS_CLOSING_MARKETPLACE_OPTIONS
+                    : JENIS_CLOSING_OPTIONS
+                  ).map((opt) => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
                 </SelectContent>

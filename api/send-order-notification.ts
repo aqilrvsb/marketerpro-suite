@@ -120,16 +120,15 @@ export default async function handler(req: any, res: any) {
     }
 
     // Generate message
-    const message = `*Pesanan Anda Sudah Didaftarkan*
+    const message = `*Pesanan Anda Sudah Ditempah*
 
 Nama : ${orderData.marketer_name}
 Phone : ${orderData.no_phone}
 Pakej : ${orderData.produk}
-Harga Jualan : RM${parseFloat(orderData.harga_jualan_sebenar || 0).toFixed(2)}
-Cara Bayaran : ${orderData.cara_bayaran}
+Tarikh Membeli : ${orderData.tarikh_tempahan || '-'}
 Tracking Number : ${orderData.no_tracking || '-'}
-
-Terima kasih kerana membeli dengan kami! 🙏`
+Harga Jualan : RM${parseFloat(orderData.harga_jualan_sebenar || 0).toFixed(2)}
+Cara Bayaran : ${orderData.cara_bayaran}`
 
     // Send WhatsApp
     const whatsappSent = await sendWhatsApp(

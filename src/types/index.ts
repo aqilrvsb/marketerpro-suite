@@ -77,3 +77,12 @@ export const NICHE_OPTIONS = [
 export const JENIS_PROSPEK_OPTIONS = [
   'Hot Lead', 'Warm Lead', 'Cold Lead', 'Qualified Lead', 'Unqualified Lead'
 ];
+
+export const JENIS_CLOSING_OPTIONS = [
+  'Manual', 'WhatsappBot', 'Website', 'Call'
+];
+
+// Additional closing options for Shopee/Tiktok platforms
+export const JENIS_CLOSING_MARKETPLACE_OPTIONS = [
+  'Manual', 'WhatsappBot', 'Website', 'Call', 'Live', 'Shop'
+];

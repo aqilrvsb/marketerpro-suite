@@ -24,6 +24,19 @@ interface MarketerStats {
   salesNP: number;
   salesEP: number;
   salesEC: number;
+  // Platform sales
+  salesFB: number;
+  salesTiktok: number;
+  salesShopee: number;
+  salesGoogle: number;
+  salesDatabase: number;
+  // Closing type sales
+  salesManual: number;
+  salesWhatsappBot: number;
+  salesWebsite: number;
+  salesCall: number;
+  salesLive: number;
+  salesShop: number;
 }
 
 interface Order {
@@ -34,6 +47,8 @@ interface Order {
   harga_jualan_sebenar: number;
   delivery_status: string;
   jenis_customer: string;
+  jenis_platform: string;
+  jenis_closing: string;
 }
 
 const Top10: React.FC = () => {
@@ -53,7 +68,7 @@ const Top10: React.FC = () => {
       try {
         const { data, error } = await (supabase as any)
           .from('customer_orders')
-          .select('id, marketer_id_staff, marketer_name, date_order, harga_jualan_sebenar, delivery_status, jenis_customer')
+          .select('id, marketer_id_staff, marketer_name, date_order, harga_jualan_sebenar, delivery_status, jenis_customer, jenis_platform, jenis_closing')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -103,6 +118,19 @@ const Top10: React.FC = () => {
           salesNP: 0,
           salesEP: 0,
           salesEC: 0,
+          // Platform sales
+          salesFB: 0,
+          salesTiktok: 0,
+          salesShopee: 0,
+          salesGoogle: 0,
+          salesDatabase: 0,
+          // Closing type sales
+          salesManual: 0,
+          salesWhatsappBot: 0,
+          salesWebsite: 0,
+          salesCall: 0,
+          salesLive: 0,
+          salesShop: 0,
         };
       }
 
@@ -123,6 +151,36 @@ const Top10: React.FC = () => {
         stats[idStaff].salesEP += saleAmount;
       } else if (customerType === 'EC') {
         stats[idStaff].salesEC += saleAmount;
+      }
+
+      // Count by platform
+      const platform = order.jenis_platform;
+      if (platform === 'Facebook') {
+        stats[idStaff].salesFB += saleAmount;
+      } else if (platform === 'Tiktok') {
+        stats[idStaff].salesTiktok += saleAmount;
+      } else if (platform === 'Shopee') {
+        stats[idStaff].salesShopee += saleAmount;
+      } else if (platform === 'Google') {
+        stats[idStaff].salesGoogle += saleAmount;
+      } else if (platform === 'Database') {
+        stats[idStaff].salesDatabase += saleAmount;
+      }
+
+      // Count by closing type
+      const closingType = order.jenis_closing;
+      if (closingType === 'Manual') {
+        stats[idStaff].salesManual += saleAmount;
+      } else if (closingType === 'WhatsappBot') {
+        stats[idStaff].salesWhatsappBot += saleAmount;
+      } else if (closingType === 'Website') {
+        stats[idStaff].salesWebsite += saleAmount;
+      } else if (closingType === 'Call') {
+        stats[idStaff].salesCall += saleAmount;
+      } else if (closingType === 'Live') {
+        stats[idStaff].salesLive += saleAmount;
+      } else if (closingType === 'Shop') {
+        stats[idStaff].salesShop += saleAmount;
       }
     });
 
@@ -332,6 +390,17 @@ const Top10: React.FC = () => {
                 <th className="text-right">SALES NP</th>
                 <th className="text-right">SALES EP</th>
                 <th className="text-right">SALES EC</th>
+                <th className="text-right text-blue-600">FB</th>
+                <th className="text-right text-pink-600">TIKTOK</th>
+                <th className="text-right text-orange-600">SHOPEE</th>
+                <th className="text-right text-red-600">GOOGLE</th>
+                <th className="text-right text-purple-600">DATABASE</th>
+                <th className="text-right text-slate-600">MANUAL</th>
+                <th className="text-right text-green-600">WA BOT</th>
+                <th className="text-right text-violet-600">WEBSITE</th>
+                <th className="text-right text-sky-600">CALL</th>
+                <th className="text-right text-rose-600">LIVE</th>
+                <th className="text-right text-orange-500">SHOP</th>
               </tr>
             </thead>
             <tbody>
@@ -354,11 +423,22 @@ const Top10: React.FC = () => {
                   <td className="text-right text-info">{formatNumber(stat.salesNP)}</td>
                   <td className="text-right text-success">{formatNumber(stat.salesEP)}</td>
                   <td className="text-right text-warning">{formatNumber(stat.salesEC)}</td>
+                  <td className="text-right text-blue-600">{formatNumber(stat.salesFB)}</td>
+                  <td className="text-right text-pink-600">{formatNumber(stat.salesTiktok)}</td>
+                  <td className="text-right text-orange-600">{formatNumber(stat.salesShopee)}</td>
+                  <td className="text-right text-red-600">{formatNumber(stat.salesGoogle)}</td>
+                  <td className="text-right text-purple-600">{formatNumber(stat.salesDatabase)}</td>
+                  <td className="text-right text-slate-600">{formatNumber(stat.salesManual)}</td>
+                  <td className="text-right text-green-600">{formatNumber(stat.salesWhatsappBot)}</td>
+                  <td className="text-right text-violet-600">{formatNumber(stat.salesWebsite)}</td>
+                  <td className="text-right text-sky-600">{formatNumber(stat.salesCall)}</td>
+                  <td className="text-right text-rose-600">{formatNumber(stat.salesLive)}</td>
+                  <td className="text-right text-orange-500">{formatNumber(stat.salesShop)}</td>
                 </tr>
               ))}
               {filteredStats.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <td colSpan={21} className="text-center py-8 text-muted-foreground">
                     No marketers found for the selected date range
                   </td>
                 </tr>

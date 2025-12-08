@@ -31,6 +31,7 @@ import {
   CreditCard,
   Banknote,
   LineChart as LineChartIcon,
+  Globe,
 } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO, isWithinInterval, eachDayOfInterval } from 'date-fns';
 import {

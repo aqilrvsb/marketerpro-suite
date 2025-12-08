@@ -794,14 +794,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesFB)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.fbPercent)}</p>
-            {marketerStats.salesFB > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingFB.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingFB.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingFB.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingFB.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingFB.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingFB.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingFB.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingFB.call)}</p>
+            </div>
           </div>
 
           {/* Sales Database */}
@@ -812,14 +810,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesDatabase)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.dbPercent)}</p>
-            {marketerStats.salesDatabase > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingDatabase.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingDatabase.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingDatabase.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingDatabase.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingDatabase.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingDatabase.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingDatabase.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingDatabase.call)}</p>
+            </div>
           </div>
 
           {/* Sales Shopee */}
@@ -830,16 +826,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesShopee)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.shopeePercent)}</p>
-            {marketerStats.salesShopee > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingShopee.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingShopee.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingShopee.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingShopee.call)}</p>
-                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingShopee.live)}</p>
-                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingShopee.shop)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingShopee.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingShopee.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingShopee.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingShopee.call)}</p>
+              <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingShopee.live)}</p>
+              <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingShopee.shop)}</p>
+            </div>
           </div>
 
           {/* Sales TikTok */}
@@ -850,16 +844,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesTiktok)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.tiktokPercent)}</p>
-            {marketerStats.salesTiktok > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingTiktok.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingTiktok.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingTiktok.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingTiktok.call)}</p>
-                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingTiktok.live)}</p>
-                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingTiktok.shop)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingTiktok.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingTiktok.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingTiktok.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingTiktok.call)}</p>
+              <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingTiktok.live)}</p>
+              <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingTiktok.shop)}</p>
+            </div>
           </div>
 
           {/* Sales Google */}
@@ -870,14 +862,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.googlePercent)}</p>
-            {marketerStats.salesGoogle > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingGoogle.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingGoogle.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingGoogle.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingGoogle.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingGoogle.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingGoogle.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingGoogle.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingGoogle.call)}</p>
+            </div>
           </div>
         </div>
 
@@ -1286,14 +1276,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesFB)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.fbPercent)}</p>
-            {bodStats.salesFB > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingFB.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingFB.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingFB.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingFB.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingFB.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingFB.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingFB.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingFB.call)}</p>
+            </div>
           </div>
 
           {/* Sales Database */}
@@ -1304,14 +1292,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesDatabase)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.dbPercent)}</p>
-            {bodStats.salesDatabase > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingDatabase.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingDatabase.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingDatabase.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingDatabase.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingDatabase.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingDatabase.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingDatabase.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingDatabase.call)}</p>
+            </div>
           </div>
 
           {/* Sales Shopee */}
@@ -1322,16 +1308,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShopee)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopeePercent)}</p>
-            {bodStats.salesShopee > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingShopee.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingShopee.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingShopee.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingShopee.call)}</p>
-                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingShopee.live)}</p>
-                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingShopee.shop)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingShopee.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingShopee.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingShopee.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingShopee.call)}</p>
+              <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingShopee.live)}</p>
+              <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingShopee.shop)}</p>
+            </div>
           </div>
 
           {/* Sales TikTok */}
@@ -1342,16 +1326,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesTiktok)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.tiktokPercent)}</p>
-            {bodStats.salesTiktok > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingTiktok.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingTiktok.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingTiktok.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingTiktok.call)}</p>
-                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingTiktok.live)}</p>
-                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingTiktok.shop)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingTiktok.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingTiktok.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingTiktok.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingTiktok.call)}</p>
+              <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingTiktok.live)}</p>
+              <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingTiktok.shop)}</p>
+            </div>
           </div>
 
           {/* Sales Google */}
@@ -1362,14 +1344,12 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.googlePercent)}</p>
-            {bodStats.salesGoogle > 0 && (
-              <div className="mt-3 pt-3 border-t border-border space-y-1">
-                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingGoogle.manual)}</p>
-                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingGoogle.waBot)}</p>
-                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingGoogle.website)}</p>
-                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingGoogle.call)}</p>
-              </div>
-            )}
+            <div className="mt-3 pt-3 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingGoogle.manual)}</p>
+              <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingGoogle.waBot)}</p>
+              <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingGoogle.website)}</p>
+              <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingGoogle.call)}</p>
+            </div>
           </div>
         </div>
 

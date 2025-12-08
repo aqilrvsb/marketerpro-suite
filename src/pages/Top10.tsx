@@ -21,22 +21,23 @@ interface MarketerStats {
   totalSales: number;
   returns: number;
   roas: number;
-  salesNP: number;
-  salesEP: number;
-  salesEC: number;
-  // Platform sales
-  salesFB: number;
-  salesTiktok: number;
-  salesShopee: number;
-  salesGoogle: number;
-  salesDatabase: number;
-  // Closing type sales
-  salesManual: number;
-  salesWhatsappBot: number;
-  salesWebsite: number;
-  salesCall: number;
-  salesLive: number;
-  salesShop: number;
+  // Customer type counts
+  customerNP: number;
+  customerEP: number;
+  customerEC: number;
+  // Platform counts
+  platformFB: number;
+  platformTiktok: number;
+  platformShopee: number;
+  platformGoogle: number;
+  platformDatabase: number;
+  // Closing type counts
+  closingManual: number;
+  closingWaBot: number;
+  closingWebsite: number;
+  closingCall: number;
+  closingLive: number;
+  closingShop: number;
 }
 
 interface Order {
@@ -115,26 +116,27 @@ const Top10: React.FC = () => {
           totalSales: 0,
           returns: 0,
           roas: 0,
-          salesNP: 0,
-          salesEP: 0,
-          salesEC: 0,
-          // Platform sales
-          salesFB: 0,
-          salesTiktok: 0,
-          salesShopee: 0,
-          salesGoogle: 0,
-          salesDatabase: 0,
-          // Closing type sales
-          salesManual: 0,
-          salesWhatsappBot: 0,
-          salesWebsite: 0,
-          salesCall: 0,
-          salesLive: 0,
-          salesShop: 0,
+          // Customer type counts
+          customerNP: 0,
+          customerEP: 0,
+          customerEC: 0,
+          // Platform counts
+          platformFB: 0,
+          platformTiktok: 0,
+          platformShopee: 0,
+          platformGoogle: 0,
+          platformDatabase: 0,
+          // Closing type counts
+          closingManual: 0,
+          closingWaBot: 0,
+          closingWebsite: 0,
+          closingCall: 0,
+          closingLive: 0,
+          closingShop: 0,
         };
       }
 
-      // Count sales by customer type
+      // Count sales amount
       const saleAmount = Number(order.harga_jualan_sebenar) || 0;
       stats[idStaff].totalSales += saleAmount;
 
@@ -143,44 +145,44 @@ const Top10: React.FC = () => {
         stats[idStaff].returns += saleAmount;
       }
 
-      // Count by customer type (NP, EP, EC)
+      // Count by customer type (NP, EP, EC) - count customers, not sales
       const customerType = order.jenis_customer?.toUpperCase();
       if (customerType === 'NP') {
-        stats[idStaff].salesNP += saleAmount;
+        stats[idStaff].customerNP += 1;
       } else if (customerType === 'EP') {
-        stats[idStaff].salesEP += saleAmount;
+        stats[idStaff].customerEP += 1;
       } else if (customerType === 'EC') {
-        stats[idStaff].salesEC += saleAmount;
+        stats[idStaff].customerEC += 1;
       }
 
-      // Count by platform
+      // Count by platform - count orders, not sales
       const platform = order.jenis_platform;
       if (platform === 'Facebook') {
-        stats[idStaff].salesFB += saleAmount;
+        stats[idStaff].platformFB += 1;
       } else if (platform === 'Tiktok') {
-        stats[idStaff].salesTiktok += saleAmount;
+        stats[idStaff].platformTiktok += 1;
       } else if (platform === 'Shopee') {
-        stats[idStaff].salesShopee += saleAmount;
+        stats[idStaff].platformShopee += 1;
       } else if (platform === 'Google') {
-        stats[idStaff].salesGoogle += saleAmount;
+        stats[idStaff].platformGoogle += 1;
       } else if (platform === 'Database') {
-        stats[idStaff].salesDatabase += saleAmount;
+        stats[idStaff].platformDatabase += 1;
       }
 
-      // Count by closing type
+      // Count by closing type - count orders, not sales
       const closingType = order.jenis_closing;
       if (closingType === 'Manual') {
-        stats[idStaff].salesManual += saleAmount;
+        stats[idStaff].closingManual += 1;
       } else if (closingType === 'WhatsappBot') {
-        stats[idStaff].salesWhatsappBot += saleAmount;
+        stats[idStaff].closingWaBot += 1;
       } else if (closingType === 'Website') {
-        stats[idStaff].salesWebsite += saleAmount;
+        stats[idStaff].closingWebsite += 1;
       } else if (closingType === 'Call') {
-        stats[idStaff].salesCall += saleAmount;
+        stats[idStaff].closingCall += 1;
       } else if (closingType === 'Live') {
-        stats[idStaff].salesLive += saleAmount;
+        stats[idStaff].closingLive += 1;
       } else if (closingType === 'Shop') {
-        stats[idStaff].salesShop += saleAmount;
+        stats[idStaff].closingShop += 1;
       }
     });
 
@@ -387,19 +389,19 @@ const Top10: React.FC = () => {
                 <th className="text-right">TOTAL SALES</th>
                 <th className="text-right">RETURN</th>
                 <th className="text-right">ROAS</th>
-                <th className="text-right">SALES NP</th>
-                <th className="text-right">SALES EP</th>
-                <th className="text-right">SALES EC</th>
-                <th className="text-right text-blue-600">FB</th>
-                <th className="text-right text-pink-600">TIKTOK</th>
-                <th className="text-right text-orange-600">SHOPEE</th>
-                <th className="text-right text-red-600">GOOGLE</th>
-                <th className="text-right text-purple-600">DATABASE</th>
-                <th className="text-right text-slate-600">MANUAL</th>
-                <th className="text-right text-green-600">WA BOT</th>
-                <th className="text-right text-violet-600">WEBSITE</th>
-                <th className="text-right text-sky-600">CALL</th>
-                <th className="text-right text-rose-600">LIVE</th>
+                <th className="text-right text-green-600">Customer NP</th>
+                <th className="text-right text-purple-600">Customer EP</th>
+                <th className="text-right text-amber-600">Customer EC</th>
+                <th className="text-right text-blue-600">Platform FB</th>
+                <th className="text-right text-pink-600">Platform TIKTOK</th>
+                <th className="text-right text-orange-600">Platform SHOPEE</th>
+                <th className="text-right text-red-600">Platform GOOGLE</th>
+                <th className="text-right text-cyan-600">Platform DATABASE</th>
+                <th className="text-right text-slate-600">Closing MANUAL</th>
+                <th className="text-right text-emerald-600">Closing WA BOT</th>
+                <th className="text-right text-violet-600">Closing WEBSITE</th>
+                <th className="text-right text-sky-600">Closing CALL</th>
+                <th className="text-right text-rose-600">Closing LIVE</th>
                 <th className="text-right text-orange-500">SHOP</th>
               </tr>
             </thead>
@@ -420,20 +422,20 @@ const Top10: React.FC = () => {
                   <td className="text-right font-semibold text-primary">{formatNumber(stat.totalSales)}</td>
                   <td className="text-right text-destructive">{formatNumber(stat.returns)}</td>
                   <td className="text-right">{formatNumber(stat.roas)}</td>
-                  <td className="text-right text-info">{formatNumber(stat.salesNP)}</td>
-                  <td className="text-right text-success">{formatNumber(stat.salesEP)}</td>
-                  <td className="text-right text-warning">{formatNumber(stat.salesEC)}</td>
-                  <td className="text-right text-blue-600">{formatNumber(stat.salesFB)}</td>
-                  <td className="text-right text-pink-600">{formatNumber(stat.salesTiktok)}</td>
-                  <td className="text-right text-orange-600">{formatNumber(stat.salesShopee)}</td>
-                  <td className="text-right text-red-600">{formatNumber(stat.salesGoogle)}</td>
-                  <td className="text-right text-purple-600">{formatNumber(stat.salesDatabase)}</td>
-                  <td className="text-right text-slate-600">{formatNumber(stat.salesManual)}</td>
-                  <td className="text-right text-green-600">{formatNumber(stat.salesWhatsappBot)}</td>
-                  <td className="text-right text-violet-600">{formatNumber(stat.salesWebsite)}</td>
-                  <td className="text-right text-sky-600">{formatNumber(stat.salesCall)}</td>
-                  <td className="text-right text-rose-600">{formatNumber(stat.salesLive)}</td>
-                  <td className="text-right text-orange-500">{formatNumber(stat.salesShop)}</td>
+                  <td className="text-right text-green-600">{stat.customerNP}</td>
+                  <td className="text-right text-purple-600">{stat.customerEP}</td>
+                  <td className="text-right text-amber-600">{stat.customerEC}</td>
+                  <td className="text-right text-blue-600">{stat.platformFB}</td>
+                  <td className="text-right text-pink-600">{stat.platformTiktok}</td>
+                  <td className="text-right text-orange-600">{stat.platformShopee}</td>
+                  <td className="text-right text-red-600">{stat.platformGoogle}</td>
+                  <td className="text-right text-cyan-600">{stat.platformDatabase}</td>
+                  <td className="text-right text-slate-600">{stat.closingManual}</td>
+                  <td className="text-right text-emerald-600">{stat.closingWaBot}</td>
+                  <td className="text-right text-violet-600">{stat.closingWebsite}</td>
+                  <td className="text-right text-sky-600">{stat.closingCall}</td>
+                  <td className="text-right text-rose-600">{stat.closingLive}</td>
+                  <td className="text-right text-orange-500">{stat.closingShop}</td>
                 </tr>
               ))}
               {filteredStats.length === 0 && (

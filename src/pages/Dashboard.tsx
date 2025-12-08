@@ -251,11 +251,27 @@ const Dashboard: React.FC = () => {
       };
     };
 
+    // Customer type breakdown per platform
+    const getCustomerByPlatform = (platform: string) => {
+      const platformOrders = filteredOrders.filter(o => o.jenisPlatform === platform);
+      return {
+        np: platformOrders.filter(o => o.jenisCustomer === 'NP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        ep: platformOrders.filter(o => o.jenisCustomer === 'EP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        ec: platformOrders.filter(o => o.jenisCustomer === 'EC').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      };
+    };
+
     const closingFB = getClosingByPlatform('Facebook');
     const closingDatabase = getClosingByPlatform('Database');
     const closingShopee = getClosingByPlatform('Shopee');
     const closingTiktok = getClosingByPlatform('Tiktok');
     const closingGoogle = getClosingByPlatform('Google');
+
+    const customerFB = getCustomerByPlatform('Facebook');
+    const customerDatabase = getCustomerByPlatform('Database');
+    const customerShopee = getCustomerByPlatform('Shopee');
+    const customerTiktok = getCustomerByPlatform('Tiktok');
+    const customerGoogle = getCustomerByPlatform('Google');
 
     // Sales by Customer Type
     const salesNP = filteredOrders.filter(o => o.jenisCustomer === 'NP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
@@ -320,6 +336,11 @@ const Dashboard: React.FC = () => {
       closingShopee,
       closingTiktok,
       closingGoogle,
+      customerFB,
+      customerDatabase,
+      customerShopee,
+      customerTiktok,
+      customerGoogle,
       salesNP,
       npPercent,
       salesEP,
@@ -471,6 +492,22 @@ const Dashboard: React.FC = () => {
     const closingTiktok = getClosingByPlatformBod('Tiktok');
     const closingGoogle = getClosingByPlatformBod('Google');
 
+    // Customer type breakdown per platform (BOD)
+    const getCustomerByPlatformBod = (platform: string) => {
+      const platformOrders = filteredAllOrders.filter(o => o.jenis_platform === platform);
+      return {
+        np: platformOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        ep: platformOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        ec: platformOrders.filter(o => o.jenis_customer === 'EC').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+      };
+    };
+
+    const customerFB = getCustomerByPlatformBod('Facebook');
+    const customerDatabase = getCustomerByPlatformBod('Database');
+    const customerShopee = getCustomerByPlatformBod('Shopee');
+    const customerTiktok = getCustomerByPlatformBod('Tiktok');
+    const customerGoogle = getCustomerByPlatformBod('Google');
+
     // Sales by Customer Type
     const salesNP = filteredAllOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
     const salesEP = filteredAllOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
@@ -534,6 +571,11 @@ const Dashboard: React.FC = () => {
       closingShopee,
       closingTiktok,
       closingGoogle,
+      customerFB,
+      customerDatabase,
+      customerShopee,
+      customerTiktok,
+      customerGoogle,
       salesNP,
       npPercent,
       salesEP,
@@ -800,6 +842,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingFB.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingFB.call)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(marketerStats.customerFB.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(marketerStats.customerFB.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(marketerStats.customerFB.ec)}</p>
+            </div>
           </div>
 
           {/* Sales Database */}
@@ -815,6 +862,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingDatabase.waBot)}</p>
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingDatabase.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingDatabase.call)}</p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(marketerStats.customerDatabase.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(marketerStats.customerDatabase.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(marketerStats.customerDatabase.ec)}</p>
             </div>
           </div>
 
@@ -834,6 +886,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingShopee.live)}</p>
               <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingShopee.shop)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(marketerStats.customerShopee.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(marketerStats.customerShopee.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(marketerStats.customerShopee.ec)}</p>
+            </div>
           </div>
 
           {/* Sales TikTok */}
@@ -852,6 +909,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingTiktok.live)}</p>
               <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingTiktok.shop)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(marketerStats.customerTiktok.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(marketerStats.customerTiktok.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(marketerStats.customerTiktok.ec)}</p>
+            </div>
           </div>
 
           {/* Sales Google */}
@@ -867,6 +929,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingGoogle.waBot)}</p>
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingGoogle.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingGoogle.call)}</p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(marketerStats.customerGoogle.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(marketerStats.customerGoogle.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(marketerStats.customerGoogle.ec)}</p>
             </div>
           </div>
         </div>
@@ -1282,6 +1349,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingFB.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingFB.call)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(bodStats.customerFB.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(bodStats.customerFB.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(bodStats.customerFB.ec)}</p>
+            </div>
           </div>
 
           {/* Sales Database */}
@@ -1297,6 +1369,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingDatabase.waBot)}</p>
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingDatabase.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingDatabase.call)}</p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(bodStats.customerDatabase.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(bodStats.customerDatabase.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(bodStats.customerDatabase.ec)}</p>
             </div>
           </div>
 
@@ -1316,6 +1393,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingShopee.live)}</p>
               <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingShopee.shop)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(bodStats.customerShopee.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(bodStats.customerShopee.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(bodStats.customerShopee.ec)}</p>
+            </div>
           </div>
 
           {/* Sales TikTok */}
@@ -1334,6 +1416,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingTiktok.live)}</p>
               <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingTiktok.shop)}</p>
             </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(bodStats.customerTiktok.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(bodStats.customerTiktok.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(bodStats.customerTiktok.ec)}</p>
+            </div>
           </div>
 
           {/* Sales Google */}
@@ -1349,6 +1436,11 @@ const Dashboard: React.FC = () => {
               <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingGoogle.waBot)}</p>
               <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingGoogle.website)}</p>
               <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingGoogle.call)}</p>
+            </div>
+            <div className="mt-2 pt-2 border-t border-border space-y-1">
+              <p className="text-xs"><span className="text-cyan-600">NP:</span> {formatCurrency(bodStats.customerGoogle.np)}</p>
+              <p className="text-xs"><span className="text-emerald-600">EP:</span> {formatCurrency(bodStats.customerGoogle.ep)}</p>
+              <p className="text-xs"><span className="text-amber-600">EC:</span> {formatCurrency(bodStats.customerGoogle.ec)}</p>
             </div>
           </div>
         </div>

@@ -237,6 +237,25 @@ const Dashboard: React.FC = () => {
     const salesTiktok = filteredOrders.filter(o => o.jenisPlatform === 'Tiktok').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
     const salesGoogle = filteredOrders.filter(o => o.jenisPlatform === 'Google').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
 
+    // Closing breakdown per platform
+    const getClosingByPlatform = (platform: string) => {
+      const platformOrders = filteredOrders.filter(o => o.jenisPlatform === platform);
+      return {
+        manual: platformOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        waBot: platformOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        website: platformOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        call: platformOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        live: platformOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        shop: platformOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      };
+    };
+
+    const closingFB = getClosingByPlatform('Facebook');
+    const closingDatabase = getClosingByPlatform('Database');
+    const closingShopee = getClosingByPlatform('Shopee');
+    const closingTiktok = getClosingByPlatform('Tiktok');
+    const closingGoogle = getClosingByPlatform('Google');
+
     // Sales by Customer Type
     const salesNP = filteredOrders.filter(o => o.jenisCustomer === 'NP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
     const salesEP = filteredOrders.filter(o => o.jenisCustomer === 'EP').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
@@ -295,6 +314,11 @@ const Dashboard: React.FC = () => {
       tiktokPercent,
       salesGoogle,
       googlePercent,
+      closingFB,
+      closingDatabase,
+      closingShopee,
+      closingTiktok,
+      closingGoogle,
       salesNP,
       npPercent,
       salesEP,
@@ -427,6 +451,25 @@ const Dashboard: React.FC = () => {
     const salesTiktok = filteredAllOrders.filter(o => o.jenis_platform === 'Tiktok').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
     const salesGoogle = filteredAllOrders.filter(o => o.jenis_platform === 'Google').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
 
+    // Closing breakdown per platform (BOD)
+    const getClosingByPlatformBod = (platform: string) => {
+      const platformOrders = filteredAllOrders.filter(o => o.jenis_platform === platform);
+      return {
+        manual: platformOrders.filter(o => o.jenis_closing === 'Manual').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        waBot: platformOrders.filter(o => o.jenis_closing === 'WhatsappBot').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        website: platformOrders.filter(o => o.jenis_closing === 'Website').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        call: platformOrders.filter(o => o.jenis_closing === 'Call').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        live: platformOrders.filter(o => o.jenis_closing === 'Live').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+        shop: platformOrders.filter(o => o.jenis_closing === 'Shop').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0),
+      };
+    };
+
+    const closingFB = getClosingByPlatformBod('Facebook');
+    const closingDatabase = getClosingByPlatformBod('Database');
+    const closingShopee = getClosingByPlatformBod('Shopee');
+    const closingTiktok = getClosingByPlatformBod('Tiktok');
+    const closingGoogle = getClosingByPlatformBod('Google');
+
     // Sales by Customer Type
     const salesNP = filteredAllOrders.filter(o => o.jenis_customer === 'NP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
     const salesEP = filteredAllOrders.filter(o => o.jenis_customer === 'EP').reduce((sum, o) => sum + (Number(o.harga_jualan_sebenar) || 0), 0);
@@ -485,6 +528,11 @@ const Dashboard: React.FC = () => {
       tiktokPercent,
       salesGoogle,
       googlePercent,
+      closingFB,
+      closingDatabase,
+      closingShopee,
+      closingTiktok,
+      closingGoogle,
       salesNP,
       npPercent,
       salesEP,
@@ -735,8 +783,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Platform Sales Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Platform Sales Row with Closing Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Sales FB */}
           <div className="stat-card">
             <div className="flex items-center gap-2 text-blue-600 mb-2">
@@ -745,6 +793,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesFB)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.fbPercent)}</p>
+            {marketerStats.salesFB > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingFB.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingFB.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingFB.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingFB.call)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Database */}
@@ -755,6 +811,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesDatabase)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.dbPercent)}</p>
+            {marketerStats.salesDatabase > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingDatabase.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingDatabase.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingDatabase.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingDatabase.call)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Shopee */}
@@ -765,6 +829,16 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesShopee)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.shopeePercent)}</p>
+            {marketerStats.salesShopee > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingShopee.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingShopee.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingShopee.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingShopee.call)}</p>
+                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingShopee.live)}</p>
+                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingShopee.shop)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales TikTok */}
@@ -775,6 +849,16 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesTiktok)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.tiktokPercent)}</p>
+            {marketerStats.salesTiktok > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingTiktok.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingTiktok.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingTiktok.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingTiktok.call)}</p>
+                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(marketerStats.closingTiktok.live)}</p>
+                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(marketerStats.closingTiktok.shop)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Google */}
@@ -785,74 +869,15 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.googlePercent)}</p>
-          </div>
-        </div>
-
-        {/* Jenis Closing Sales Row */}
-        <div className={`grid grid-cols-2 gap-4 ${(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) ? 'md:grid-cols-6' : 'md:grid-cols-4'}`}>
-          {/* Sales Manual */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-slate-600 mb-2">
-              <ClipboardList className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING MANUAL</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesManual)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.manualPercent)}</p>
-          </div>
-
-          {/* Sales WhatsappBot */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-green-600 mb-2">
-              <Phone className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING WA BOT</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWhatsappBot)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.whatsappBotPercent)}</p>
-          </div>
-
-          {/* Sales Website */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-violet-600 mb-2">
-              <SearchIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING WEBSITE</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWebsite)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.websitePercent)}</p>
-          </div>
-
-          {/* Sales Call */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-sky-600 mb-2">
-              <Phone className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING CALL</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesCall)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.callPercent)}</p>
-          </div>
-
-          {/* Sales Live - Only show if there are Tiktok or Shopee sales */}
-          {(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) && (
-            <div className="stat-card">
-              <div className="flex items-center gap-2 text-rose-600 mb-2">
-                <Play className="w-5 h-5" />
-                <span className="text-sm font-medium">CLOSING LIVE</span>
+            {marketerStats.salesGoogle > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(marketerStats.closingGoogle.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(marketerStats.closingGoogle.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(marketerStats.closingGoogle.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(marketerStats.closingGoogle.call)}</p>
               </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesLive)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.livePercent)}</p>
-            </div>
-          )}
-
-          {/* Sales Shop - Only show if there are Tiktok or Shopee sales */}
-          {(marketerStats.salesTiktok > 0 || marketerStats.salesShopee > 0) && (
-            <div className="stat-card">
-              <div className="flex items-center gap-2 text-orange-500 mb-2">
-                <ShoppingBag className="w-5 h-5" />
-                <span className="text-sm font-medium">CLOSING SHOP</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesShop)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.shopPercent)}</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Customer Type Sales Row */}
@@ -1187,8 +1212,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Platform Sales Row */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Platform Sales Row with Closing Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Sales FB */}
           <div className="stat-card">
             <div className="flex items-center gap-2 text-blue-600 mb-2">
@@ -1197,6 +1222,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesFB)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.fbPercent)}</p>
+            {bodStats.salesFB > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingFB.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingFB.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingFB.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingFB.call)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Database */}
@@ -1207,6 +1240,14 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesDatabase)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.dbPercent)}</p>
+            {bodStats.salesDatabase > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingDatabase.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingDatabase.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingDatabase.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingDatabase.call)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Shopee */}
@@ -1217,6 +1258,16 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShopee)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopeePercent)}</p>
+            {bodStats.salesShopee > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingShopee.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingShopee.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingShopee.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingShopee.call)}</p>
+                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingShopee.live)}</p>
+                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingShopee.shop)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales TikTok */}
@@ -1227,6 +1278,16 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesTiktok)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.tiktokPercent)}</p>
+            {bodStats.salesTiktok > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingTiktok.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingTiktok.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingTiktok.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingTiktok.call)}</p>
+                <p className="text-xs"><span className="text-rose-600">Live:</span> {formatCurrency(bodStats.closingTiktok.live)}</p>
+                <p className="text-xs"><span className="text-orange-500">Shop:</span> {formatCurrency(bodStats.closingTiktok.shop)}</p>
+              </div>
+            )}
           </div>
 
           {/* Sales Google */}
@@ -1237,74 +1298,15 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesGoogle)}</p>
             <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.googlePercent)}</p>
-          </div>
-        </div>
-
-        {/* Jenis Closing Sales Row */}
-        <div className={`grid grid-cols-2 gap-4 ${(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) ? 'md:grid-cols-6' : 'md:grid-cols-4'}`}>
-          {/* Sales Manual */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-slate-600 mb-2">
-              <ClipboardList className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING MANUAL</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesManual)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.manualPercent)}</p>
-          </div>
-
-          {/* Sales WhatsappBot */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-green-600 mb-2">
-              <Phone className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING WA BOT</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWhatsappBot)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.whatsappBotPercent)}</p>
-          </div>
-
-          {/* Sales Website */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-violet-600 mb-2">
-              <SearchIcon className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING WEBSITE</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWebsite)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.websitePercent)}</p>
-          </div>
-
-          {/* Sales Call */}
-          <div className="stat-card">
-            <div className="flex items-center gap-2 text-sky-600 mb-2">
-              <Phone className="w-5 h-5" />
-              <span className="text-sm font-medium">CLOSING CALL</span>
-            </div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesCall)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.callPercent)}</p>
-          </div>
-
-          {/* Sales Live - Only show if there are Tiktok or Shopee sales */}
-          {(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) && (
-            <div className="stat-card">
-              <div className="flex items-center gap-2 text-rose-600 mb-2">
-                <Play className="w-5 h-5" />
-                <span className="text-sm font-medium">CLOSING LIVE</span>
+            {bodStats.salesGoogle > 0 && (
+              <div className="mt-3 pt-3 border-t border-border space-y-1">
+                <p className="text-xs"><span className="text-slate-600">Manual:</span> {formatCurrency(bodStats.closingGoogle.manual)}</p>
+                <p className="text-xs"><span className="text-green-600">WA Bot:</span> {formatCurrency(bodStats.closingGoogle.waBot)}</p>
+                <p className="text-xs"><span className="text-violet-600">Website:</span> {formatCurrency(bodStats.closingGoogle.website)}</p>
+                <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingGoogle.call)}</p>
               </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesLive)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.livePercent)}</p>
-            </div>
-          )}
-
-          {/* Sales Shop - Only show if there are Tiktok or Shopee sales */}
-          {(bodStats.salesTiktok > 0 || bodStats.salesShopee > 0) && (
-            <div className="stat-card">
-              <div className="flex items-center gap-2 text-orange-500 mb-2">
-                <ShoppingBag className="w-5 h-5" />
-                <span className="text-sm font-medium">CLOSING SHOP</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShop)}</p>
-              <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopPercent)}</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Customer Type Sales Row */}

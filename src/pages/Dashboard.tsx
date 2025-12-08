@@ -880,6 +880,69 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Closing Summary Row (All Platforms) */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          {/* Closing Manual */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-slate-600 mb-2">
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING MANUAL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesManual)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.manualPercent)}</p>
+          </div>
+
+          {/* Closing WA Bot */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WA BOT</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWhatsappBot)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.whatsappBotPercent)}</p>
+          </div>
+
+          {/* Closing Website */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+              <Globe className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WEBSITE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesWebsite)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.websitePercent)}</p>
+          </div>
+
+          {/* Closing Call */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-sky-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING CALL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesCall)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.callPercent)}</p>
+          </div>
+
+          {/* Closing Live */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-rose-600 mb-2">
+              <Play className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING LIVE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesLive)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.livePercent)}</p>
+          </div>
+
+          {/* Closing Shop */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-orange-500 mb-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING SHOP</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(marketerStats.salesShop)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(marketerStats.shopPercent)}</p>
+          </div>
+        </div>
+
         {/* Customer Type Sales Row */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {/* Sales NP */}
@@ -1306,6 +1369,69 @@ const Dashboard: React.FC = () => {
                 <p className="text-xs"><span className="text-sky-600">Call:</span> {formatCurrency(bodStats.closingGoogle.call)}</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Closing Summary Row (All Platforms) */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          {/* Closing Manual */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-slate-600 mb-2">
+              <ClipboardList className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING MANUAL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesManual)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.manualPercent)}</p>
+          </div>
+
+          {/* Closing WA Bot */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-green-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WA BOT</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWhatsappBot)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.whatsappBotPercent)}</p>
+          </div>
+
+          {/* Closing Website */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+              <Globe className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING WEBSITE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesWebsite)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.websitePercent)}</p>
+          </div>
+
+          {/* Closing Call */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-sky-600 mb-2">
+              <Phone className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING CALL</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesCall)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.callPercent)}</p>
+          </div>
+
+          {/* Closing Live */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-rose-600 mb-2">
+              <Play className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING LIVE</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesLive)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.livePercent)}</p>
+          </div>
+
+          {/* Closing Shop */}
+          <div className="stat-card">
+            <div className="flex items-center gap-2 text-orange-500 mb-2">
+              <ShoppingBag className="w-5 h-5" />
+              <span className="text-sm font-medium">CLOSING SHOP</span>
+            </div>
+            <p className="text-xl font-bold text-foreground">{formatCurrency(bodStats.salesShop)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{formatPercent(bodStats.shopPercent)}</p>
           </div>
         </div>
 

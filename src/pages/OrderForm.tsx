@@ -159,7 +159,9 @@ const OrderForm: React.FC = () => {
             title: result.type === 'NP' ? 'Lead Ditemui (NP)' : 'Lead Ditemui (EP)',
             description: result.isNewLead
               ? 'Lead baru akan dicipta secara automatik.'
-              : `Lead sedia ada - ${result.type === 'NP' ? 'Tarikh sama (New Prospect)' : 'Tarikh berbeza (Existing Prospect)'}`,
+              : result.hasExistingType
+                ? `Lead sedia ada - Jenis: ${result.type} (dari rekod)`
+                : `Lead sedia ada - ${result.type === 'NP' ? 'Tarikh sama (New Prospect)' : 'Tarikh berbeza (Existing Prospect)'}`,
           });
         } catch (err) {
           console.error('Error checking lead:', err);
@@ -199,14 +201,14 @@ const OrderForm: React.FC = () => {
   };
 
   // Check lead by phone number and determine NP/EP
-  const checkLeadAndDetermineType = async (phoneNumber: string): Promise<{ type: 'NP' | 'EP'; leadId?: string; isNewLead?: boolean }> => {
+  const checkLeadAndDetermineType = async (phoneNumber: string): Promise<{ type: 'NP' | 'EP'; leadId?: string; isNewLead?: boolean; hasExistingType?: boolean }> => {
     const marketerIdStaff = profile?.username || '';
     const today = new Date().toISOString().split('T')[0];
 
     // Search for existing lead by phone number for this marketer
     const { data: existingLead } = await supabase
       .from('prospects')
-      .select('id, tarikh_phone_number')
+      .select('id, tarikh_phone_number, jenis_prospek')
       .eq('marketer_id_staff', marketerIdStaff)
       .eq('no_telefon', phoneNumber)
       .order('created_at', { ascending: false })
@@ -214,7 +216,14 @@ const OrderForm: React.FC = () => {
       .single();
 
     if (existingLead) {
-      // Lead exists - check if same date as today
+      // Lead exists - first check if it already has NP or EP set
+      const existingType = existingLead.jenis_prospek?.toUpperCase();
+      if (existingType === 'NP' || existingType === 'EP') {
+        // Keep existing NP/EP value
+        return { type: existingType as 'NP' | 'EP', leadId: existingLead.id, hasExistingType: true };
+      }
+
+      // No existing type - determine based on date logic
       if (existingLead.tarikh_phone_number === today) {
         // Same date = NP (New Prospect)
         return { type: 'NP', leadId: existingLead.id };

@@ -232,19 +232,19 @@ const OrderForm: React.FC = () => {
         return { type: 'EP', leadId: existingLead.id };
       }
     } else {
-      // Lead doesn't exist - set as EP and will auto-create with last month's date
+      // Lead doesn't exist - set as EP and will auto-create with yesterday's date
       return { type: 'EP', isNewLead: true };
     }
   };
 
-  // Auto-create lead with last month's date
+  // Auto-create lead with yesterday's date
   const autoCreateLead = async (phoneNumber: string, customerName: string, productName: string) => {
     const marketerIdStaff = profile?.username || '';
 
-    // Calculate last month's date
-    const lastMonth = new Date();
-    lastMonth.setMonth(lastMonth.getMonth() - 1);
-    const lastMonthDate = lastMonth.toISOString().split('T')[0];
+    // Calculate yesterday's date
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayDate = yesterday.toISOString().split('T')[0];
 
     const { error } = await supabase
       .from('prospects')
@@ -253,7 +253,7 @@ const OrderForm: React.FC = () => {
         no_telefon: phoneNumber,
         niche: productName,
         jenis_prospek: 'EP', // Auto-determined as EP since lead didn't exist
-        tarikh_phone_number: lastMonthDate,
+        tarikh_phone_number: yesterdayDate,
         marketer_id_staff: marketerIdStaff,
         admin_id_staff: '',
         status_closed: '',

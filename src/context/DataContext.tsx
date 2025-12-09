@@ -72,9 +72,10 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const mapProspect = (d: any): Prospect => ({
     id: d.id, namaProspek: d.nama_prospek, noTelefon: d.no_telefon, niche: d.niche,
     jenisProspek: d.jenis_prospek, tarikhPhoneNumber: d.tarikh_phone_number || '',
-    adminIdStaff: d.admin_id_staff || '', marketerIdStaff: d.marketer_id_staff || '',
+    adminIdStaff: d.admin_id_staff || '', adminClaimedAt: d.admin_claimed_at || '',
+    marketerIdStaff: d.marketer_id_staff || '',
     createdAt: d.created_at, statusClosed: d.status_closed || '', priceClosed: parseFloat(d.price_closed) || 0,
-    countOrder: d.count_order || 0, profile: d.profile || '',
+    countOrder: d.count_order || 0, profile: d.profile || '', createdBy: d.created_by || '',
   });
 
   const refreshData = async () => {

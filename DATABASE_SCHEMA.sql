@@ -174,6 +174,7 @@ CREATE TABLE public.prospects (
   jenis_prospek text NOT NULL,               -- Prospect type: NP, EP, EC
   tarikh_phone_number date,                  -- Date of phone number entry
   admin_id_staff text,                       -- Admin Staff ID who claimed this lead
+  admin_claimed_at timestamp with time zone, -- Timestamp when admin claimed this lead
   marketer_id_staff text,                    -- Marketer Staff ID who owns this prospect
   created_by uuid,                           -- Reference to profiles.id
   status_closed text,                        -- Closed status (closed, INVALID, TIDAK ANGKAT, BUSY, etc.)

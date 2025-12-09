@@ -44,6 +44,7 @@ export interface Prospect {
   jenisProspek: string;
   tarikhPhoneNumber: string;
   adminIdStaff: string;
+  adminClaimedAt: string;
   marketerIdStaff: string;
   statusClosed: string;
   priceClosed: number;

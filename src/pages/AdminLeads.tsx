@@ -82,6 +82,7 @@ const AdminLeads: React.FC = () => {
   const [selectedProspectForStatus, setSelectedProspectForStatus] = useState<any>(null);
   const [statusFormData, setStatusFormData] = useState({
     statusProspect: '',
+    umur: '',
     masalah: '',
     pekerjaan: '',
   });
@@ -167,13 +168,15 @@ const AdminLeads: React.FC = () => {
         return;
       }
 
-      // Update each lead with admin_id_staff
+      // Update each lead with admin_id_staff and admin_claimed_at timestamp
       const leadIds = unclaimedLeads.map((l: any) => l.id);
+      const claimedAt = new Date().toISOString();
       const { error: updateError } = await (supabase as any)
         .from('prospects')
         .update({
           admin_id_staff: profile.idstaff,
-          updated_at: new Date().toISOString()
+          admin_claimed_at: claimedAt,
+          updated_at: claimedAt
         })
         .in('id', leadIds);
 
@@ -208,7 +211,7 @@ const AdminLeads: React.FC = () => {
     return Array.from(marketers).sort();
   }, [prospects]);
 
-  // Filter prospects based on admin assignment, search, date range, and marketer
+  // Filter prospects based on admin assignment, search, date range (by admin_claimed_at), and marketer
   const filteredProspects = useMemo(() => {
     return prospects.filter((prospect) => {
       // Only show leads assigned to current admin
@@ -220,9 +223,10 @@ const AdminLeads: React.FC = () => {
         prospect.niche.toLowerCase().includes(search.toLowerCase()) ||
         (prospect.marketerIdStaff || '').toLowerCase().includes(search.toLowerCase());
 
-      const prospectDate = prospect.tarikhPhoneNumber;
-      const matchesStartDate = !startDate || (prospectDate && prospectDate >= startDate);
-      const matchesEndDate = !endDate || (prospectDate && prospectDate <= endDate);
+      // Filter by admin_claimed_at date (when admin claimed the lead)
+      const claimedDate = prospect.adminClaimedAt ? prospect.adminClaimedAt.split('T')[0] : '';
+      const matchesStartDate = !startDate || (claimedDate && claimedDate >= startDate);
+      const matchesEndDate = !endDate || (claimedDate && claimedDate <= endDate);
       const matchesMarketer = marketerFilter === 'All' || prospect.marketerIdStaff === marketerFilter;
 
       return matchesAdmin && matchesSearch && matchesStartDate && matchesEndDate && matchesMarketer;
@@ -299,6 +303,7 @@ const AdminLeads: React.FC = () => {
     setSelectedProspectForStatus(prospect);
     setStatusFormData({
       statusProspect: '',
+      umur: '',
       masalah: '',
       pekerjaan: '',
     });
@@ -316,20 +321,38 @@ const AdminLeads: React.FC = () => {
       return;
     }
 
+    // Validate required fields when PRESENT is selected
+    if (statusFormData.statusProspect === 'PRESENT') {
+      if (!statusFormData.umur || !statusFormData.masalah || !statusFormData.pekerjaan) {
+        toast({
+          title: 'Error',
+          description: 'Sila isi Umur, Masalah dan Pekerjaan.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     if (!selectedProspectForStatus) return;
 
     setIsUpdatingStatus(true);
 
     try {
-      // Build profile text from masalah and pekerjaan
-      const profileParts: string[] = [];
-      if (statusFormData.masalah) {
-        profileParts.push(`Masalah: ${statusFormData.masalah}`);
+      // Build profile text from umur, masalah and pekerjaan (only for PRESENT)
+      let profileText = '';
+      if (statusFormData.statusProspect === 'PRESENT') {
+        const profileParts: string[] = [];
+        if (statusFormData.umur) {
+          profileParts.push(`Umur: ${statusFormData.umur}`);
+        }
+        if (statusFormData.masalah) {
+          profileParts.push(`Masalah: ${statusFormData.masalah}`);
+        }
+        if (statusFormData.pekerjaan) {
+          profileParts.push(`Pekerjaan: ${statusFormData.pekerjaan}`);
+        }
+        profileText = profileParts.join(' | ');
       }
-      if (statusFormData.pekerjaan) {
-        profileParts.push(`Pekerjaan: ${statusFormData.pekerjaan}`);
-      }
-      const profileText = profileParts.join(' | ');
 
       const { error } = await (supabase as any)
         .from('prospects')
@@ -761,7 +784,6 @@ const AdminLeads: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Niche</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Profile</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Marketer Lead</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Action</th>
               </tr>
@@ -778,7 +800,6 @@ const AdminLeads: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-foreground max-w-[200px] truncate" title={prospect.profile || ''}>
                       {prospect.profile || '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-foreground font-medium">{prospect.marketerIdStaff || '-'}</td>
                     <td className="px-4 py-3">
                       {prospect.statusClosed ? (
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
@@ -814,7 +835,7 @@ const AdminLeads: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                     Tiada lead dijumpai.
                   </td>
                 </tr>
@@ -1025,23 +1046,35 @@ const AdminLeads: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Masalah (Optional)</Label>
-              <Textarea
-                value={statusFormData.masalah}
-                onChange={(e) => setStatusFormData(prev => ({ ...prev, masalah: e.target.value }))}
-                placeholder="Masukkan masalah prospect..."
-                rows={2}
-              />
-            </div>
-            <div>
-              <Label>Pekerjaan (Optional)</Label>
-              <Input
-                value={statusFormData.pekerjaan}
-                onChange={(e) => setStatusFormData(prev => ({ ...prev, pekerjaan: e.target.value }))}
-                placeholder="Masukkan pekerjaan prospect"
-              />
-            </div>
+            {statusFormData.statusProspect === 'PRESENT' && (
+              <>
+                <div>
+                  <Label>Umur *</Label>
+                  <Input
+                    value={statusFormData.umur}
+                    onChange={(e) => setStatusFormData(prev => ({ ...prev, umur: e.target.value }))}
+                    placeholder="Masukkan umur prospect"
+                  />
+                </div>
+                <div>
+                  <Label>Masalah *</Label>
+                  <Textarea
+                    value={statusFormData.masalah}
+                    onChange={(e) => setStatusFormData(prev => ({ ...prev, masalah: e.target.value }))}
+                    placeholder="Masukkan masalah prospect..."
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label>Pekerjaan *</Label>
+                  <Input
+                    value={statusFormData.pekerjaan}
+                    onChange={(e) => setStatusFormData(prev => ({ ...prev, pekerjaan: e.target.value }))}
+                    placeholder="Masukkan pekerjaan prospect"
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Batal</Button>

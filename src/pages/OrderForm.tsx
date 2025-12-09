@@ -28,7 +28,10 @@ import { cn } from '@/lib/utils';
 import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
-const CUSTOMER_TYPE_OPTIONS = ['Prospect', 'EC'];
+const CUSTOMER_TYPE_OPTIONS = [
+  { value: 'Prospect', label: 'Prospect' },
+  { value: 'EC', label: 'Existing Customer' },
+];
 const JENIS_CLOSING_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call'];
 const JENIS_CLOSING_MARKETPLACE_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call', 'Live', 'Shop'];
 const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
@@ -1024,7 +1027,7 @@ const OrderForm: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {CUSTOMER_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

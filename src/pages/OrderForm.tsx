@@ -216,7 +216,7 @@ const OrderForm: React.FC = () => {
       .eq('no_telefon', phoneNumber)
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (existingLead) {
       // Lead exists - first check if it already has NP or EP set

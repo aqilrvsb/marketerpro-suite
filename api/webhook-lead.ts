@@ -284,7 +284,6 @@ export default async function handler(req: any, res: any) {
         nama_prospek: leadData.nama,
         no_telefon: formattedPhone,
         niche: leadData.niche,
-        jenis_prospek: leadData.jenis,
         tarikh_phone_number: new Date().toISOString().split('T')[0],
         marketer_id_staff: marketerIdStaff,
         created_by: marketerId

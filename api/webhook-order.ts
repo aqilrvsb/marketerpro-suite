@@ -8,7 +8,7 @@ const WHACENTER_API = 'https://api.whacenter.com/api'
 
 // Initialize Supabase client
 const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY
 
 // Send WhatsApp message via Whacenter
 async function sendWhatsApp(instance: string, phone: string, message: string): Promise<boolean> {

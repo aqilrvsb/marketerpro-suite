@@ -98,6 +98,12 @@ const navItems: NavItem[] = [
     roles: ['bod'],
   },
   {
+    label: 'Report Admin Prospect',
+    path: '/dashboard/report-admin-prospect',
+    icon: <Users className="w-5 h-5" />,
+    roles: ['bod'],
+  },
+  {
     label: 'PNL Config',
     path: '/dashboard/pnl-config',
     icon: <Receipt className="w-5 h-5" />,

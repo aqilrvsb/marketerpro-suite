@@ -30,6 +30,7 @@ import Profile from "./pages/Profile";
 import PNL from "./pages/PNL";
 import PNLConfig from "./pages/PNLConfig";
 import AdminLeads from "./pages/AdminLeads";
+import ReportAdminProspect from "./pages/ReportAdminProspect";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
                   <Route path="pnl-config" element={<PNLConfig />} />
                   <Route path="report-sales" element={<ReportSales />} />
                   <Route path="report-leads" element={<ReportLeads />} />
+                  <Route path="report-admin-prospect" element={<ReportAdminProspect />} />
                   <Route path="dashboard-logistic" element={<DashboardLogistic />} />
                   <Route path="report-pembelian" element={<ReportPembelian />} />
                   <Route path="logistics" element={<Logistics />} />

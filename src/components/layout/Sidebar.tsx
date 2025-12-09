@@ -35,54 +35,56 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
+  // ============ MARKETER ROLE ============
   {
     label: 'Dashboard',
     path: '/dashboard',
     icon: <LayoutDashboard className="w-5 h-5" />,
-    roles: ['marketer', 'admin', 'bod', 'logistic', 'account'],
+    roles: ['marketer', 'bod', 'logistic', 'account'],
   },
   {
     label: 'Order',
     path: '/dashboard/orders/new',
     icon: <ClipboardList className="w-5 h-5" />,
-    roles: ['marketer', 'admin'],
+    roles: ['marketer'],
   },
   {
     label: 'History',
     path: '/dashboard/orders',
     icon: <History className="w-5 h-5" />,
-    roles: ['marketer', 'admin', 'account'],
+    roles: ['marketer', 'account'],
   },
   {
     label: 'Leads',
     path: '/dashboard/prospects',
     icon: <Users className="w-5 h-5" />,
-    roles: ['marketer', 'admin'],
+    roles: ['marketer'],
   },
   {
     label: 'Spend',
     path: '/dashboard/spend',
     icon: <Wallet className="w-5 h-5" />,
-    roles: ['marketer', 'admin'],
+    roles: ['marketer'],
   },
   {
     label: 'Reporting Spend',
     path: '/dashboard/reporting-spend',
     icon: <BarChart3 className="w-5 h-5" />,
-    roles: ['marketer', 'admin'],
+    roles: ['marketer'],
   },
   {
     label: 'Top 10',
     path: '/dashboard/top10',
     icon: <Trophy className="w-5 h-5" />,
-    roles: ['marketer', 'admin', 'bod'],
+    roles: ['marketer', 'bod'],
   },
   {
     label: 'PNL',
     path: '/dashboard/pnl',
     icon: <Receipt className="w-5 h-5" />,
-    roles: ['marketer', 'admin'],
+    roles: ['marketer'],
   },
+  // ============ BOD ROLE ============
   {
     label: 'Report Sales',
     path: '/dashboard/report-sales',
@@ -102,12 +104,6 @@ const navItems: NavItem[] = [
     roles: ['bod'],
   },
   {
-    label: 'Logistics',
-    path: '/dashboard/logistics',
-    icon: <Truck className="w-5 h-5" />,
-    roles: ['admin'],
-  },
-  {
     label: 'Dashboard Logistic',
     path: '/dashboard/dashboard-logistic',
     icon: <Truck className="w-5 h-5" />,
@@ -119,6 +115,19 @@ const navItems: NavItem[] = [
     icon: <ShoppingCart className="w-5 h-5" />,
     roles: ['bod'],
   },
+  {
+    label: 'Product',
+    path: '/dashboard/logistics/product',
+    icon: <Package className="w-5 h-5" />,
+    roles: ['logistic', 'bod'],
+  },
+  {
+    label: 'Bundle',
+    path: '/dashboard/logistics/bundle',
+    icon: <Boxes className="w-5 h-5" />,
+    roles: ['logistic', 'bod'],
+  },
+  // ============ LOGISTIC ROLE ============
   {
     label: 'Order',
     path: '/dashboard/logistics/order',
@@ -144,18 +153,6 @@ const navItems: NavItem[] = [
     roles: ['logistic'],
   },
   {
-    label: 'Product',
-    path: '/dashboard/logistics/product',
-    icon: <Package className="w-5 h-5" />,
-    roles: ['logistic', 'bod'],
-  },
-  {
-    label: 'Bundle',
-    path: '/dashboard/logistics/bundle',
-    icon: <Boxes className="w-5 h-5" />,
-    roles: ['logistic', 'bod'],
-  },
-  {
     label: 'Stock In',
     path: '/dashboard/logistics/stock-in',
     icon: <ArrowDownToLine className="w-5 h-5" />,
@@ -173,22 +170,24 @@ const navItems: NavItem[] = [
     icon: <Settings className="w-5 h-5" />,
     roles: ['logistic'],
   },
+  // ============ ACCOUNT ROLE ============
   {
     label: 'Finance',
     path: '/dashboard/finance',
     icon: <DollarSign className="w-5 h-5" />,
-    roles: ['admin', 'account'],
+    roles: ['account'],
   },
   {
     label: 'Reports',
     path: '/dashboard/reports',
     icon: <BarChart3 className="w-5 h-5" />,
-    roles: ['admin', 'account'],
+    roles: ['account'],
   },
+  // ============ ADMIN ROLE ============
   {
-    label: 'Settings',
-    path: '/dashboard/settings',
-    icon: <Settings className="w-5 h-5" />,
+    label: 'Leads',
+    path: '/dashboard/admin/leads',
+    icon: <Users className="w-5 h-5" />,
     roles: ['admin'],
   },
 ];

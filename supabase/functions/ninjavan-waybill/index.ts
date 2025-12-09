@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,7 +27,18 @@ serve(async (req) => {
       );
     }
 
-    console.log('Fetching waybills for tracking numbers:', trackingNumbers);
+    // Filter out empty/invalid tracking numbers
+    const validTrackingNumbers = trackingNumbers.filter((tn: string) => tn && tn.trim().length > 0);
+
+    if (validTrackingNumbers.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'No valid tracking numbers provided' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Fetching waybills for tracking numbers:', validTrackingNumbers);
+    console.log('Number of tracking numbers:', validTrackingNumbers.length);
 
     // Get Ninjavan config
     const { data: config, error: configError } = await supabase
@@ -69,66 +81,151 @@ serve(async (req) => {
     const accessToken = authData.access_token;
     console.log('Token obtained successfully');
 
-    // Join tracking numbers with comma for Ninjavan API
-    const tids = trackingNumbers.join(',');
-    console.log('Tracking numbers to fetch:', tids);
+    // For single tracking number, fetch directly
+    if (validTrackingNumbers.length === 1) {
+      const tid = validTrackingNumbers[0];
+      const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${encodeURIComponent(tid)}&h=0`;
+      console.log('Fetching single waybill from:', waybillUrl);
 
-    // Fetch waybill PDF from Ninjavan API (matching PHP example)
-    const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${encodeURIComponent(tids)}&h=0`;
-    console.log('Fetching waybill from:', waybillUrl);
+      const waybillResponse = await fetch(waybillUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/pdf',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
 
-    const waybillResponse = await fetch(waybillUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
-      }
-    });
-
-    console.log('Waybill response status:', waybillResponse.status);
-
-    if (!waybillResponse.ok) {
-      const contentType = waybillResponse.headers.get('content-type') || '';
-      let errorDetails: string;
-
-      if (contentType.includes('application/json')) {
-        const errorJson = await waybillResponse.json();
-        errorDetails = JSON.stringify(errorJson);
-      } else {
-        errorDetails = await waybillResponse.text();
+      if (!waybillResponse.ok) {
+        const errorText = await waybillResponse.text();
+        console.error('Waybill fetch failed:', errorText);
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to fetch waybill from Ninjavan.',
+            details: errorText,
+            trackingNumber: tid
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      console.error('Waybill fetch failed:', errorDetails);
+      const pdfBuffer = await waybillResponse.arrayBuffer();
+      console.log('PDF received, size:', pdfBuffer.byteLength, 'bytes');
 
+      return new Response(pdfBuffer, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="waybill_${tid}.pdf"`
+        }
+      });
+    }
+
+    // For multiple tracking numbers, fetch each PDF and merge them
+    console.log('Fetching multiple waybills and merging...');
+
+    const pdfBuffers: Uint8Array[] = [];
+    const failedTids: string[] = [];
+    const successTids: string[] = [];
+
+    for (const tid of validTrackingNumbers) {
+      try {
+        const waybillUrl = `https://api.ninjavan.co/my/2.0/reports/waybill?tids=${encodeURIComponent(tid)}&h=0`;
+        console.log(`Fetching waybill for ${tid}...`);
+
+        const waybillResponse = await fetch(waybillUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/pdf',
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        if (waybillResponse.ok) {
+          const buffer = await waybillResponse.arrayBuffer();
+          if (buffer.byteLength > 0) {
+            pdfBuffers.push(new Uint8Array(buffer));
+            successTids.push(tid);
+            console.log(`Successfully fetched waybill for ${tid}, size: ${buffer.byteLength} bytes`);
+          } else {
+            failedTids.push(tid);
+            console.log(`Empty PDF for ${tid}`);
+          }
+        } else {
+          failedTids.push(tid);
+          console.log(`Failed to fetch waybill for ${tid}: ${waybillResponse.status}`);
+        }
+      } catch (e) {
+        failedTids.push(tid);
+        console.error(`Error fetching waybill for ${tid}:`, e);
+      }
+    }
+
+    if (pdfBuffers.length === 0) {
       return new Response(
         JSON.stringify({
-          error: 'Failed to fetch waybill from Ninjavan.',
-          status: waybillResponse.status,
-          details: errorDetails,
-          trackingNumbers: trackingNumbers,
-          suggestion: waybillResponse.status === 403
-            ? 'Your Ninjavan API credentials may not have waybill permissions. Contact Ninjavan to enable CORE_GET_AWB scope.'
-            : 'Please verify the tracking numbers are correct and the orders exist in Ninjavan.'
+          error: 'Failed to fetch any waybills from Ninjavan.',
+          failedTids: failedTids
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get PDF as binary and return directly as PDF
-    const pdfBuffer = await waybillResponse.arrayBuffer();
+    // Merge all PDFs using pdf-lib
+    console.log(`Merging ${pdfBuffers.length} PDFs...`);
 
-    console.log('PDF received, size:', pdfBuffer.byteLength, 'bytes');
+    try {
+      const mergedPdf = await PDFDocument.create();
 
-    // Return PDF directly with proper headers
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="waybill_${tids.replace(/,/g, '_')}.pdf"`
+      for (const pdfBytes of pdfBuffers) {
+        const pdf = await PDFDocument.load(pdfBytes);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
       }
-    });
+
+      const mergedPdfBytes = await mergedPdf.save();
+      console.log(`Merged PDF created, size: ${mergedPdfBytes.byteLength} bytes`);
+
+      // Return warning if some failed
+      if (failedTids.length > 0) {
+        console.log(`Warning: ${failedTids.length} tracking numbers failed: ${failedTids.join(', ')}`);
+      }
+
+      return new Response(mergedPdfBytes, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="waybill_${successTids.length}_orders.pdf"`,
+          'X-Failed-Tids': failedTids.join(','),
+          'X-Success-Count': successTids.length.toString(),
+          'X-Failed-Count': failedTids.length.toString()
+        }
+      });
+    } catch (mergeError) {
+      console.error('Error merging PDFs:', mergeError);
+
+      // If merge fails, return the first PDF
+      if (pdfBuffers.length > 0) {
+        return new Response(pdfBuffers[0], {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="waybill_${successTids[0]}.pdf"`,
+            'X-Warning': 'Could not merge PDFs, returning first waybill only'
+          }
+        });
+      }
+
+      return new Response(
+        JSON.stringify({
+          error: 'Failed to merge PDF waybills.',
+          details: mergeError instanceof Error ? mergeError.message : 'Unknown error'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : 'Internal server error';

@@ -544,27 +544,20 @@ const Logistics: React.FC = () => {
       return;
     }
 
-    // Get tracking numbers for selected orders (only Ninjavan orders)
     const selectedOrdersList = paginatedOrders.filter(order => selectedOrders.has(order.id));
+
+    // Separate Ninjavan orders and Shopee/Tiktok orders
     const ninjavanOrders = selectedOrdersList.filter(
       order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
     );
+    const marketplaceOrders = selectedOrdersList.filter(
+      order => (order.jenisPlatform === 'Shopee' || order.jenisPlatform === 'Tiktok') && order.waybillUrl
+    );
 
-    if (ninjavanOrders.length === 0) {
+    if (ninjavanOrders.length === 0 && marketplaceOrders.length === 0) {
       toast({
-        title: 'No Ninjavan orders',
-        description: 'Selected orders do not have Ninjavan tracking numbers.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
-
-    if (trackingNumbers.length === 0) {
-      toast({
-        title: 'No tracking numbers',
-        description: 'Selected orders do not have tracking numbers.',
+        title: 'No waybills available',
+        description: 'Selected orders do not have waybills to print.',
         variant: 'destructive',
       });
       return;
@@ -573,47 +566,78 @@ const Logistics: React.FC = () => {
     setIsPrinting(true);
 
     try {
-      // Call Ninjavan waybill function - returns PDF directly
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ trackingNumbers }),
-        }
-      );
+      // Handle Ninjavan orders
+      if (ninjavanOrders.length > 0) {
+        const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
 
-      if (!response.ok) {
-        // Try to parse error message from JSON response
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch waybill');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ trackingNumbers }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Ninjavan Waybill Generated',
+              description: `Waybill for ${trackingNumbers.length} Ninjavan order(s) opened in new tab.`,
+            });
+          }
         } else {
-          throw new Error(`Failed to fetch waybill: ${response.status}`);
+          console.error('Failed to fetch Ninjavan waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Ninjavan waybills.',
+            variant: 'destructive',
+          });
         }
       }
 
-      // Check if response is PDF
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/pdf')) {
-        // Get PDF as blob and open in new tab
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+      // Handle Shopee/Tiktok orders
+      if (marketplaceOrders.length > 0) {
+        const waybillUrls = marketplaceOrders.map(order => order.waybillUrl).filter(Boolean);
 
-        toast({
-          title: 'Waybill Generated',
-          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
-        });
-      } else {
-        // Unexpected response format
-        const text = await response.text();
-        console.error('Unexpected response:', text);
-        throw new Error('Unexpected response format from server');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/merge-waybills`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ waybillUrls }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Marketplace Waybill Generated',
+              description: `Waybill for ${waybillUrls.length} Shopee/Tiktok order(s) opened in new tab.`,
+            });
+          }
+        } else {
+          console.error('Failed to fetch marketplace waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Shopee/Tiktok waybills.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching waybill:', error);
@@ -685,27 +709,20 @@ const Logistics: React.FC = () => {
       return;
     }
 
-    // Get tracking numbers for selected orders (only Ninjavan orders)
     const selectedOrdersList = paginatedReturnOrders.filter(order => selectedReturnOrders.has(order.id));
+
+    // Separate Ninjavan orders and Shopee/Tiktok orders
     const ninjavanOrders = selectedOrdersList.filter(
       order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
     );
+    const marketplaceOrders = selectedOrdersList.filter(
+      order => (order.jenisPlatform === 'Shopee' || order.jenisPlatform === 'Tiktok') && order.waybillUrl
+    );
 
-    if (ninjavanOrders.length === 0) {
+    if (ninjavanOrders.length === 0 && marketplaceOrders.length === 0) {
       toast({
-        title: 'No Ninjavan orders',
-        description: 'Selected orders do not have Ninjavan tracking numbers.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
-
-    if (trackingNumbers.length === 0) {
-      toast({
-        title: 'No tracking numbers',
-        description: 'Selected orders do not have tracking numbers.',
+        title: 'No waybills available',
+        description: 'Selected orders do not have waybills to print.',
         variant: 'destructive',
       });
       return;
@@ -714,43 +731,78 @@ const Logistics: React.FC = () => {
     setIsReturnPrinting(true);
 
     try {
-      // Call Ninjavan waybill function - returns PDF directly
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ trackingNumbers }),
-        }
-      );
+      // Handle Ninjavan orders
+      if (ninjavanOrders.length > 0) {
+        const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
 
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch waybill');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ trackingNumbers }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Ninjavan Waybill Generated',
+              description: `Waybill for ${trackingNumbers.length} Ninjavan order(s) opened in new tab.`,
+            });
+          }
         } else {
-          throw new Error(`Failed to fetch waybill: ${response.status}`);
+          console.error('Failed to fetch Ninjavan waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Ninjavan waybills.',
+            variant: 'destructive',
+          });
         }
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/pdf')) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+      // Handle Shopee/Tiktok orders
+      if (marketplaceOrders.length > 0) {
+        const waybillUrls = marketplaceOrders.map(order => order.waybillUrl).filter(Boolean);
 
-        toast({
-          title: 'Waybill Generated',
-          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
-        });
-      } else {
-        const text = await response.text();
-        console.error('Unexpected response:', text);
-        throw new Error('Unexpected response format from server');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/merge-waybills`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ waybillUrls }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Marketplace Waybill Generated',
+              description: `Waybill for ${waybillUrls.length} Shopee/Tiktok order(s) opened in new tab.`,
+            });
+          }
+        } else {
+          console.error('Failed to fetch marketplace waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Shopee/Tiktok waybills.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching waybill:', error);
@@ -847,27 +899,20 @@ const Logistics: React.FC = () => {
       return;
     }
 
-    // Get tracking numbers for selected orders (only Ninjavan orders)
     const selectedOrdersList = paginatedShipmentOrders.filter(order => selectedShipmentOrders.has(order.id));
+
+    // Separate Ninjavan orders and Shopee/Tiktok orders
     const ninjavanOrders = selectedOrdersList.filter(
       order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
     );
+    const marketplaceOrders = selectedOrdersList.filter(
+      order => (order.jenisPlatform === 'Shopee' || order.jenisPlatform === 'Tiktok') && order.waybillUrl
+    );
 
-    if (ninjavanOrders.length === 0) {
+    if (ninjavanOrders.length === 0 && marketplaceOrders.length === 0) {
       toast({
-        title: 'No Ninjavan orders',
-        description: 'Selected orders do not have Ninjavan tracking numbers.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
-
-    if (trackingNumbers.length === 0) {
-      toast({
-        title: 'No tracking numbers',
-        description: 'Selected orders do not have tracking numbers.',
+        title: 'No waybills available',
+        description: 'Selected orders do not have waybills to print.',
         variant: 'destructive',
       });
       return;
@@ -876,43 +921,78 @@ const Logistics: React.FC = () => {
     setIsShipmentPrinting(true);
 
     try {
-      // Call Ninjavan waybill function - returns PDF directly
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ trackingNumbers }),
-        }
-      );
+      // Handle Ninjavan orders
+      if (ninjavanOrders.length > 0) {
+        const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
 
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch waybill');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ trackingNumbers }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Ninjavan Waybill Generated',
+              description: `Waybill for ${trackingNumbers.length} Ninjavan order(s) opened in new tab.`,
+            });
+          }
         } else {
-          throw new Error(`Failed to fetch waybill: ${response.status}`);
+          console.error('Failed to fetch Ninjavan waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Ninjavan waybills.',
+            variant: 'destructive',
+          });
         }
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/pdf')) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+      // Handle Shopee/Tiktok orders
+      if (marketplaceOrders.length > 0) {
+        const waybillUrls = marketplaceOrders.map(order => order.waybillUrl).filter(Boolean);
 
-        toast({
-          title: 'Waybill Generated',
-          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
-        });
-      } else {
-        const text = await response.text();
-        console.error('Unexpected response:', text);
-        throw new Error('Unexpected response format from server');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/merge-waybills`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ waybillUrls }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Marketplace Waybill Generated',
+              description: `Waybill for ${waybillUrls.length} Shopee/Tiktok order(s) opened in new tab.`,
+            });
+          }
+        } else {
+          console.error('Failed to fetch marketplace waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Shopee/Tiktok waybills.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching waybill:', error);
@@ -961,25 +1041,19 @@ const Logistics: React.FC = () => {
     }
 
     const selectedOrdersList = paginatedPendingTrackingOrders.filter(order => selectedPendingTrackingOrders.has(order.id));
+
+    // Separate Ninjavan orders and Shopee/Tiktok orders
     const ninjavanOrders = selectedOrdersList.filter(
       order => order.jenisPlatform !== 'Shopee' && order.jenisPlatform !== 'Tiktok' && order.noTracking
     );
+    const marketplaceOrders = selectedOrdersList.filter(
+      order => (order.jenisPlatform === 'Shopee' || order.jenisPlatform === 'Tiktok') && order.waybillUrl
+    );
 
-    if (ninjavanOrders.length === 0) {
+    if (ninjavanOrders.length === 0 && marketplaceOrders.length === 0) {
       toast({
-        title: 'No Ninjavan orders',
-        description: 'Selected orders do not have Ninjavan tracking numbers.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
-
-    if (trackingNumbers.length === 0) {
-      toast({
-        title: 'No tracking numbers',
-        description: 'Selected orders do not have tracking numbers.',
+        title: 'No waybills available',
+        description: 'Selected orders do not have waybills to print.',
         variant: 'destructive',
       });
       return;
@@ -988,42 +1062,78 @@ const Logistics: React.FC = () => {
     setIsPendingTrackingPrinting(true);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ trackingNumbers }),
-        }
-      );
+      // Handle Ninjavan orders
+      if (ninjavanOrders.length > 0) {
+        const trackingNumbers = ninjavanOrders.map(order => order.noTracking).filter(Boolean);
 
-      if (!response.ok) {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/json')) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch waybill');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ninjavan-waybill`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ trackingNumbers }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Ninjavan Waybill Generated',
+              description: `Waybill for ${trackingNumbers.length} Ninjavan order(s) opened in new tab.`,
+            });
+          }
         } else {
-          throw new Error(`Failed to fetch waybill: ${response.status}`);
+          console.error('Failed to fetch Ninjavan waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Ninjavan waybills.',
+            variant: 'destructive',
+          });
         }
       }
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/pdf')) {
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+      // Handle Shopee/Tiktok orders
+      if (marketplaceOrders.length > 0) {
+        const waybillUrls = marketplaceOrders.map(order => order.waybillUrl).filter(Boolean);
 
-        toast({
-          title: 'Waybill Generated',
-          description: `Waybill for ${trackingNumbers.length} order(s) opened in new tab.`,
-        });
-      } else {
-        const text = await response.text();
-        console.error('Unexpected response:', text);
-        throw new Error('Unexpected response format from server');
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/merge-waybills`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({ waybillUrls }),
+          }
+        );
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/pdf')) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            toast({
+              title: 'Marketplace Waybill Generated',
+              description: `Waybill for ${waybillUrls.length} Shopee/Tiktok order(s) opened in new tab.`,
+            });
+          }
+        } else {
+          console.error('Failed to fetch marketplace waybills');
+          toast({
+            title: 'Warning',
+            description: 'Failed to fetch some Shopee/Tiktok waybills.',
+            variant: 'destructive',
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching waybill:', error);

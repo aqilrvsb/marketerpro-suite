@@ -123,7 +123,6 @@ const Auth: React.FC = () => {
             <span className="text-primary">DFR</span>
             <span className="text-foreground">Empire</span>
           </h1>
-          <p className="text-muted-foreground mt-2">Enterprise Resource Planning System</p>
         </div>
 
         {/* Auth Card */}
@@ -143,7 +142,6 @@ const Auth: React.FC = () => {
                 <Input
                   id="staffId"
                   type="text"
-                  placeholder="e.g., MR-001, AD-001, BOD"
                   value={staffId}
                   onChange={(e) => setStaffId(e.target.value.toUpperCase())}
                   className="pl-10 h-11"
@@ -196,9 +194,6 @@ const Auth: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="marketer">Marketer</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="bod">BOD (Board of Directors)</SelectItem>
-                      <SelectItem value="logistic">Logistic</SelectItem>
-                      <SelectItem value="account">Account</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

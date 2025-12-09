@@ -58,7 +58,6 @@ const AdminLeads: React.FC = () => {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [marketerFilter, setMarketerFilter] = useState('All');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingProspect, setEditingProspect] = useState<any>(null);
@@ -202,16 +201,7 @@ const AdminLeads: React.FC = () => {
     }
   };
 
-  // Get unique marketers from prospects
-  const uniqueMarketers = useMemo(() => {
-    const marketers = new Set<string>();
-    prospects.forEach(p => {
-      if (p.marketerIdStaff) marketers.add(p.marketerIdStaff);
-    });
-    return Array.from(marketers).sort();
-  }, [prospects]);
-
-  // Filter prospects based on admin assignment, search, date range (by admin_claimed_at), and marketer
+  // Filter prospects based on admin assignment, search, date range (by admin_claimed_at)
   const filteredProspects = useMemo(() => {
     return prospects.filter((prospect) => {
       // Only show leads assigned to current admin
@@ -227,30 +217,54 @@ const AdminLeads: React.FC = () => {
       const claimedDate = prospect.adminClaimedAt ? prospect.adminClaimedAt.split('T')[0] : '';
       const matchesStartDate = !startDate || (claimedDate && claimedDate >= startDate);
       const matchesEndDate = !endDate || (claimedDate && claimedDate <= endDate);
-      const matchesMarketer = marketerFilter === 'All' || prospect.marketerIdStaff === marketerFilter;
 
-      return matchesAdmin && matchesSearch && matchesStartDate && matchesEndDate && matchesMarketer;
+      return matchesAdmin && matchesSearch && matchesStartDate && matchesEndDate;
     });
-  }, [prospects, search, startDate, endDate, marketerFilter, profile?.idstaff]);
+  }, [prospects, search, startDate, endDate, profile?.idstaff]);
 
   // Calculate stats
   const stats = useMemo(() => {
     const totalLead = filteredProspects.length;
-    const totalNP = filteredProspects.filter(p => p.jenisProspek === 'NP').length;
-    const totalEP = filteredProspects.filter(p => p.jenisProspek === 'EP').length;
-    const totalSales = filteredProspects
-      .filter(p => p.statusClosed === 'closed')
-      .reduce((sum, p) => sum + (p.priceClosed || 0), 0);
-    const leadClose = filteredProspects.filter(p => p.statusClosed === 'closed').length;
-    const leadXClose = filteredProspects.filter(p => !p.statusClosed || p.statusClosed !== 'closed').length;
-    return { totalLead, totalNP, totalEP, totalSales, leadClose, leadXClose };
+    // Process Lead = has any status (not null/empty)
+    const processLead = filteredProspects.filter(p => p.statusClosed && p.statusClosed !== '').length;
+    // X Process Lead = no status yet
+    const xProcessLead = filteredProspects.filter(p => !p.statusClosed || p.statusClosed === '').length;
+    // Close Lead = status is 'closed'
+    const closeLead = filteredProspects.filter(p => p.statusClosed === 'closed').length;
+    // X Close Lead = has status but not 'closed'
+    const xCloseLead = filteredProspects.filter(p => p.statusClosed && p.statusClosed !== '' && p.statusClosed !== 'closed').length;
+    // Total Lead Profile = has profile info
+    const totalLeadProfile = filteredProspects.filter(p => p.profile && p.profile !== '').length;
+    // Total Lead X Profile = no profile info
+    const totalLeadXProfile = filteredProspects.filter(p => !p.profile || p.profile === '').length;
+    // Total Lead Present = status is 'PRESENT'
+    const totalLeadPresent = filteredProspects.filter(p => p.statusClosed === 'PRESENT').length;
+
+    // Calculate percentages
+    const processLeadPercent = totalLead > 0 ? ((processLead / totalLead) * 100).toFixed(1) : '0';
+    const xProcessLeadPercent = totalLead > 0 ? ((xProcessLead / totalLead) * 100).toFixed(1) : '0';
+    const closeLeadPercent = totalLead > 0 ? ((closeLead / totalLead) * 100).toFixed(1) : '0';
+    const xCloseLeadPercent = totalLead > 0 ? ((xCloseLead / totalLead) * 100).toFixed(1) : '0';
+    const totalLeadProfilePercent = totalLead > 0 ? ((totalLeadProfile / totalLead) * 100).toFixed(1) : '0';
+    const totalLeadXProfilePercent = totalLead > 0 ? ((totalLeadXProfile / totalLead) * 100).toFixed(1) : '0';
+    const totalLeadPresentPercent = totalLead > 0 ? ((totalLeadPresent / totalLead) * 100).toFixed(1) : '0';
+
+    return {
+      totalLead,
+      processLead, processLeadPercent,
+      xProcessLead, xProcessLeadPercent,
+      closeLead, closeLeadPercent,
+      xCloseLead, xCloseLeadPercent,
+      totalLeadProfile, totalLeadProfilePercent,
+      totalLeadXProfile, totalLeadXProfilePercent,
+      totalLeadPresent, totalLeadPresentPercent
+    };
   }, [filteredProspects]);
 
   const resetFilters = () => {
     setSearch('');
     setStartDate('');
     setEndDate('');
-    setMarketerFilter('All');
   };
 
   const handleViewOrders = async (prospect: any) => {
@@ -644,71 +658,60 @@ const AdminLeads: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <Users className="w-5 h-5 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Lead</p>
-              <p className="text-xl font-bold text-foreground">{stats.totalLead}</p>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Total Lead</p>
+            <p className="text-xl font-bold text-blue-500">{stats.totalLead}</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <Users className="w-5 h-5 text-green-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">NP</p>
-              <p className="text-xl font-bold text-foreground">{stats.totalNP}</p>
-            </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Process Lead</p>
+            <p className="text-xl font-bold text-green-500">{stats.processLead}</p>
+            <p className="text-xs text-muted-foreground">{stats.processLeadPercent}%</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <Users className="w-5 h-5 text-purple-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">EP</p>
-              <p className="text-xl font-bold text-foreground">{stats.totalEP}</p>
-            </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">X Process Lead</p>
+            <p className="text-xl font-bold text-orange-500">{stats.xProcessLead}</p>
+            <p className="text-xs text-muted-foreground">{stats.xProcessLeadPercent}%</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10">
-              <Users className="w-5 h-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Lead Close</p>
-              <p className="text-xl font-bold text-foreground">{stats.leadClose}</p>
-            </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Close Lead</p>
+            <p className="text-xl font-bold text-emerald-500">{stats.closeLead}</p>
+            <p className="text-xs text-muted-foreground">{stats.closeLeadPercent}%</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-red-500/10">
-              <Users className="w-5 h-5 text-red-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Lead X Close</p>
-              <p className="text-xl font-bold text-foreground">{stats.leadXClose}</p>
-            </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">X Close Lead</p>
+            <p className="text-xl font-bold text-red-500">{stats.xCloseLead}</p>
+            <p className="text-xs text-muted-foreground">{stats.xCloseLeadPercent}%</p>
           </div>
         </div>
-        <div className="bg-card border border-border rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <Users className="w-5 h-5 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Sales</p>
-              <p className="text-xl font-bold text-foreground">RM {stats.totalSales.toFixed(2)}</p>
-            </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Lead Profile</p>
+            <p className="text-xl font-bold text-purple-500">{stats.totalLeadProfile}</p>
+            <p className="text-xs text-muted-foreground">{stats.totalLeadProfilePercent}%</p>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Lead X Profile</p>
+            <p className="text-xl font-bold text-gray-500">{stats.totalLeadXProfile}</p>
+            <p className="text-xs text-muted-foreground">{stats.totalLeadXProfilePercent}%</p>
+          </div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-3">
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Lead Present</p>
+            <p className="text-xl font-bold text-amber-500">{stats.totalLeadPresent}</p>
+            <p className="text-xs text-muted-foreground">{stats.totalLeadPresentPercent}%</p>
           </div>
         </div>
       </div>
@@ -721,29 +724,15 @@ const AdminLeads: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Cari nama, phone, niche, marketer..."
+                placeholder="Cari nama, phone, niche..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
           </div>
-          <div className="w-[180px]">
-            <Label className="text-xs text-muted-foreground mb-1.5 block">Marketer</Label>
-            <Select value={marketerFilter} onValueChange={setMarketerFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Marketers" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All">All Marketers</SelectItem>
-                {uniqueMarketers.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div className="w-[150px]">
-            <Label className="text-xs text-muted-foreground mb-1.5 block">Dari Tarikh</Label>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Dari (Tarikh Get)</Label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -755,7 +744,7 @@ const AdminLeads: React.FC = () => {
             </div>
           </div>
           <div className="w-[150px]">
-            <Label className="text-xs text-muted-foreground mb-1.5 block">Hingga Tarikh</Label>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">Hingga (Tarikh Get)</Label>
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input

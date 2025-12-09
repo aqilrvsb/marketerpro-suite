@@ -218,9 +218,14 @@ const OrderForm: React.FC = () => {
       .maybeSingle();
 
     if (existingLead) {
-      // Lead exists - check if it already has NP or EP set (meaning they already ordered before)
+      // Lead exists - check if it already has NP, EP, or EC set (meaning they already ordered before)
       const existingType = existingLead.jenis_prospek?.toUpperCase();
       const currentCountOrder = existingLead.count_order || 0;
+
+      if (existingType === 'EC') {
+        // Already EC - stay as EC (Existing Customer)
+        return { type: 'EC', leadId: existingLead.id, countOrder: currentCountOrder };
+      }
 
       if (existingType === 'NP' || existingType === 'EP') {
         // This customer already bought before, so they become EC (Existing Customer)

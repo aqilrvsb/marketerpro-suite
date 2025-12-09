@@ -2,6 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useData } from '@/context/DataContext';
 import { useBundles } from '@/context/BundleContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,10 +21,10 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { 
-  Plus, Search, Trash2, UserPlus, Loader2, Users, User, UserCheck, 
+import {
+  Plus, Search, Trash2, UserPlus, Loader2, Users, User, UserCheck,
   Calendar, RotateCcw, Download, Upload, Pencil, FileSpreadsheet,
-  DollarSign, Target, XCircle
+  DollarSign, Target, XCircle, ShoppingCart
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -54,6 +55,10 @@ const Prospects: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [showFormatDialog, setShowFormatDialog] = useState(false);
+  const [ordersModalOpen, setOrdersModalOpen] = useState(false);
+  const [selectedProspectOrders, setSelectedProspectOrders] = useState<any[]>([]);
+  const [selectedProspectName, setSelectedProspectName] = useState('');
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
   const [formData, setFormData] = useState({
     namaProspek: '',
@@ -98,6 +103,37 @@ const Prospects: React.FC = () => {
     setSearch('');
     setStartDate('');
     setEndDate('');
+  };
+
+  const handleViewOrders = async (prospect: any) => {
+    if (!prospect.countOrder || prospect.countOrder === 0) return;
+
+    setSelectedProspectName(prospect.namaProspek);
+    setIsLoadingOrders(true);
+    setOrdersModalOpen(true);
+
+    try {
+      // Fetch orders for this lead by phone number and marketer
+      const { data: orders, error } = await (supabase as any)
+        .from('customer_orders')
+        .select('tarikh_tempahan, harga_jualan_sebenar, produk, kuantiti')
+        .eq('no_phone', prospect.noTelefon)
+        .eq('marketer_id_staff', prospect.marketerIdStaff)
+        .order('tarikh_tempahan', { ascending: false });
+
+      if (error) throw error;
+      setSelectedProspectOrders(orders || []);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mendapatkan senarai order.',
+        variant: 'destructive',
+      });
+      setSelectedProspectOrders([]);
+    } finally {
+      setIsLoadingOrders(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -338,15 +374,16 @@ const Prospects: React.FC = () => {
   };
 
   const exportCSV = () => {
-    const headers = ['No', 'Tarikh', 'Nama', 'Phone', 'Niche', 'Admin Id', 'Jenis Prospek', 'Status', 'Price'];
+    const headers = ['No', 'Tarikh', 'Nama', 'Phone', 'Niche', 'Jenis Prospek', 'Count Order', 'Admin Id', 'Status', 'Price'];
     const rows = filteredProspects.map((prospect, idx) => [
       idx + 1,
       prospect.tarikhPhoneNumber || '-',
       prospect.namaProspek,
       prospect.noTelefon,
       prospect.niche,
-      prospect.adminIdStaff || '-',
       prospect.jenisProspek || '-', // Determined by OrderForm
+      prospect.countOrder || 0,
+      prospect.adminIdStaff || '-',
       prospect.statusClosed || '-',
       prospect.priceClosed > 0 ? prospect.priceClosed.toFixed(2) : '-',
     ]);
@@ -588,6 +625,7 @@ const Prospects: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Niche</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Jenis Prospek</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Count Order</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Admin Id</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Price</th>
@@ -605,12 +643,25 @@ const Prospects: React.FC = () => {
                     <td className="px-4 py-3 text-sm text-foreground">{prospect.niche}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        prospect.jenisProspek === 'NP' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                        prospect.jenisProspek === 'NP'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                           : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
                       }`}>
                         {prospect.jenisProspek}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-center font-medium text-foreground">
+                      {prospect.countOrder > 0 ? (
+                        <button
+                          onClick={() => handleViewOrders(prospect)}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+                        >
+                          <ShoppingCart className="w-3 h-3" />
+                          {prospect.countOrder}
+                        </button>
+                      ) : (
+                        <span className="text-muted-foreground">0</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{prospect.adminIdStaff || '-'}</td>
                     <td className="px-4 py-3">
@@ -651,7 +702,7 @@ const Prospects: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                     Tiada prospect dijumpai.
                   </td>
                 </tr>
@@ -737,6 +788,67 @@ const Prospects: React.FC = () => {
           </div>
           <DialogFooter>
             <Button onClick={() => setShowFormatDialog(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Orders Modal */}
+      <Dialog open={ordersModalOpen} onOpenChange={setOrdersModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 text-blue-500" />
+              Senarai Order - {selectedProspectName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isLoadingOrders ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : selectedProspectOrders.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Tarikh Order</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Price</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Bundle</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground uppercase">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {selectedProspectOrders.map((order, idx) => (
+                      <tr key={idx} className="hover:bg-muted/30">
+                        <td className="px-3 py-2 text-foreground">{order.tarikh_tempahan || '-'}</td>
+                        <td className="px-3 py-2 text-foreground">RM {(order.harga_jualan_sebenar || 0).toFixed(2)}</td>
+                        <td className="px-3 py-2 text-foreground">{order.produk || '-'}</td>
+                        <td className="px-3 py-2 text-foreground text-center">{order.kuantiti || 1}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-muted/30">
+                    <tr>
+                      <td className="px-3 py-2 font-semibold text-foreground">Total</td>
+                      <td className="px-3 py-2 font-semibold text-foreground">
+                        RM {selectedProspectOrders.reduce((sum, o) => sum + (o.harga_jualan_sebenar || 0), 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-2"></td>
+                      <td className="px-3 py-2 font-semibold text-foreground text-center">
+                        {selectedProspectOrders.reduce((sum, o) => sum + (o.kuantiti || 1), 0)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                Tiada order dijumpai.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setOrdersModalOpen(false)}>Tutup</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

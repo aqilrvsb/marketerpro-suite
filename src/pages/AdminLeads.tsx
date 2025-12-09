@@ -768,7 +768,8 @@ const AdminLeads: React.FC = () => {
             <thead className="bg-muted/50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">No</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tarikh</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tarikh Lead</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Tarikh Get</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Nama</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Niche</th>
@@ -783,6 +784,7 @@ const AdminLeads: React.FC = () => {
                   <tr key={prospect.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-sm text-foreground">{index + 1}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{prospect.tarikhPhoneNumber || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-foreground">{prospect.adminClaimedAt ? prospect.adminClaimedAt.split('T')[0] : '-'}</td>
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{prospect.namaProspek}</td>
                     <td className="px-4 py-3 text-sm font-mono text-foreground">{prospect.noTelefon}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{prospect.niche}</td>
@@ -824,7 +826,7 @@ const AdminLeads: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                     Tiada lead dijumpai.
                   </td>
                 </tr>

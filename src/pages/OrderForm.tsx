@@ -933,6 +933,7 @@ const OrderForm: React.FC = () => {
             dateProcessed: '',
             jenisPlatform: formData.jenisPlatform,
             jenisCustomer: finalCustomerType,
+            jenisClosing: formData.jenisClosing,
             caraBayaran: formData.caraBayaran,
             notaStaff: formData.nota,
             beratParcel: 0,

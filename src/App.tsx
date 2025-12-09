@@ -23,6 +23,7 @@ import Settings from "./pages/Settings";
 import NinjavanSettings from "./pages/NinjavanSettings";
 import Top10 from "./pages/Top10";
 import ReportSales from "./pages/ReportSales";
+import ReportLeads from "./pages/ReportLeads";
 import DashboardLogistic from "./pages/DashboardLogistic";
 import ReportPembelian from "./pages/ReportPembelian";
 import Profile from "./pages/Profile";
@@ -54,6 +55,7 @@ const App = () => (
                   <Route path="pnl" element={<PNL />} />
                   <Route path="pnl-config" element={<PNLConfig />} />
                   <Route path="report-sales" element={<ReportSales />} />
+                  <Route path="report-leads" element={<ReportLeads />} />
                   <Route path="dashboard-logistic" element={<DashboardLogistic />} />
                   <Route path="report-pembelian" element={<ReportPembelian />} />
                   <Route path="logistics" element={<Logistics />} />

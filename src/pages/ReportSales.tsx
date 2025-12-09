@@ -435,7 +435,6 @@ const ReportSales: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[150px]">NAME</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[120px]">TOTAL SALES</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">RETURN</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[90px]">RETURN %</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">SPEND</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[80px]">ROAS</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap min-w-[100px]">SALES FB</th>
@@ -460,8 +459,10 @@ const ReportSales: React.FC = () => {
                   <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">{stat.idStaff}</td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">{stat.name}</td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-success whitespace-nowrap">{formatNumber(stat.totalSales)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatNumber(stat.totalReturn)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatPercent(stat.returnPercent)}</td>
+                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">
+                    <div>{formatNumber(stat.totalReturn)}</div>
+                    <div className="text-xs text-muted-foreground">{formatPercent(stat.returnPercent)}</div>
+                  </td>
                   <td className="px-4 py-3 text-sm text-right text-warning whitespace-nowrap">{formatNumber(stat.totalSpend)}</td>
                   <td className="px-4 py-3 text-sm text-right text-primary font-medium whitespace-nowrap">{stat.roas.toFixed(2)}x</td>
                   <td className="px-4 py-3 text-sm text-right text-blue-600 whitespace-nowrap">
@@ -524,7 +525,7 @@ const ReportSales: React.FC = () => {
               ))}
               {filteredStats.length === 0 && (
                 <tr>
-                  <td colSpan={21} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={20} className="px-4 py-8 text-center text-muted-foreground">
                     No marketers found for the selected date range
                   </td>
                 </tr>
@@ -536,9 +537,9 @@ const ReportSales: React.FC = () => {
                   <td className="px-4 py-3 text-sm whitespace-nowrap">TOTAL</td>
                   <td className="px-4 py-3 text-sm whitespace-nowrap">{filteredStats.length} marketers</td>
                   <td className="px-4 py-3 text-sm text-right text-success whitespace-nowrap">{formatNumber(totals.totalSales)}</td>
-                  <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">{formatNumber(totals.totalReturn)}</td>
                   <td className="px-4 py-3 text-sm text-right text-destructive whitespace-nowrap">
-                    {formatPercent(totals.totalSales > 0 ? (totals.totalReturn / totals.totalSales) * 100 : 0)}
+                    <div>{formatNumber(totals.totalReturn)}</div>
+                    <div className="text-xs text-muted-foreground">{formatPercent(totals.totalSales > 0 ? (totals.totalReturn / totals.totalSales) * 100 : 0)}</div>
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-warning whitespace-nowrap">{formatNumber(totals.totalSpend)}</td>
                   <td className="px-4 py-3 text-sm text-right text-primary whitespace-nowrap">

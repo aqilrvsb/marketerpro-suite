@@ -726,6 +726,7 @@ const OrderForm: React.FC = () => {
             no_tracking: trackingNumber,
             jenis_platform: formData.jenisPlatform,
             jenis_customer: editFinalCustomerType, // Save as NP/EP/EC, not "Prospect"
+            jenis_closing: formData.jenisClosing,
             cara_bayaran: formData.caraBayaran,
             nota_staff: formData.nota,
             // Payment details

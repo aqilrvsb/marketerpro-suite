@@ -148,6 +148,7 @@ CREATE TABLE public.customer_orders (
   date_processed date,                       -- Processed date (when delivery_status = 'Shipped')
   jenis_platform text,                       -- Platform: Facebook, Tiktok, Shopee, Database, Google
   jenis_customer text,                       -- Customer type: NP, EP, EC
+  jenis_closing text,                        -- Closing type: Manual, WhatsappBot, Website, Call, Live, Shop
   cara_bayaran text,                         -- Payment method: CASH, COD
   delivery_status text DEFAULT 'Pending'::text, -- Pending, Shipped, Success, Failed, Return
   created_at timestamp with time zone NOT NULL DEFAULT now(),

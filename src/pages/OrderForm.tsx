@@ -1062,7 +1062,7 @@ const OrderForm: React.FC = () => {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate('/dashboard/orders')}
+          onClick={() => navigate(isAdminLeadOrder ? '/dashboard/admin/leads' : '/dashboard/orders')}
         >
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -1470,7 +1470,7 @@ const OrderForm: React.FC = () => {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate('/dashboard/orders')}
+            onClick={() => navigate(isAdminLeadOrder ? '/dashboard/admin/leads' : '/dashboard/orders')}
           >
             Batal
           </Button>

@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.ninjavan-cancel]
 verify_jwt = true
+
+[functions.ninjavan-waybill]
+verify_jwt = true

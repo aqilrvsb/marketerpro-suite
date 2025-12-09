@@ -22,7 +22,7 @@ interface CustomerOrder {
 interface Prospect {
   id: string; namaProspek: string; noTelefon: string; niche: string; jenisProspek: string;
   tarikhPhoneNumber: string; adminIdStaff: string; marketerIdStaff: string; createdAt: string;
-  statusClosed: string; priceClosed: number; countOrder: number;
+  statusClosed: string; priceClosed: number; countOrder: number; profile: string;
 }
 
 interface DataContextType {
@@ -74,7 +74,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     jenisProspek: d.jenis_prospek, tarikhPhoneNumber: d.tarikh_phone_number || '',
     adminIdStaff: d.admin_id_staff || '', marketerIdStaff: d.marketer_id_staff || '',
     createdAt: d.created_at, statusClosed: d.status_closed || '', priceClosed: parseFloat(d.price_closed) || 0,
-    countOrder: d.count_order || 0,
+    countOrder: d.count_order || 0, profile: d.profile || '',
   });
 
   const refreshData = async () => {

@@ -119,7 +119,10 @@ CREATE TABLE public.customer_orders (
   no_tempahan text NOT NULL,                 -- Order number (auto-generated)
   id_sale text,                              -- Sale ID for Ninjavan (DF00001, DF00002, etc.)
   marketer_id uuid,                          -- Reference to profiles.id (optional)
-  marketer_id_staff text NOT NULL,           -- Staff ID of marketer
+  marketer_id_staff text NOT NULL,           -- Staff ID of marketer who created order
+  marketer_lead_id_staff text,               -- Staff ID of marketer who owns the lead (for admin orders)
+  admin_id_staff text,                       -- Admin Staff ID who created this order (for admin orders)
+  prospect_id uuid,                          -- Reference to prospects.id (for admin orders)
   marketer_name text NOT NULL,               -- Customer name (displayed as marketer_name)
   no_phone text NOT NULL,                    -- Customer phone
   alamat text NOT NULL,                      -- Address
@@ -170,12 +173,13 @@ CREATE TABLE public.prospects (
   niche text NOT NULL,                       -- Niche/category (product name)
   jenis_prospek text NOT NULL,               -- Prospect type: NP, EP, EC
   tarikh_phone_number date,                  -- Date of phone number entry
-  admin_id_staff text,                       -- Admin Staff ID who created it
+  admin_id_staff text,                       -- Admin Staff ID who claimed this lead
   marketer_id_staff text,                    -- Marketer Staff ID who owns this prospect
   created_by uuid,                           -- Reference to profiles.id
-  status_closed text,                        -- Closed status
+  status_closed text,                        -- Closed status (closed, INVALID, TIDAK ANGKAT, BUSY, etc.)
   price_closed numeric,                      -- Closed price
   count_order integer NOT NULL DEFAULT 0,    -- Count of orders made by this lead
+  profile text,                              -- Profile info (Masalah + Pekerjaan from admin)
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT prospects_pkey PRIMARY KEY (id)

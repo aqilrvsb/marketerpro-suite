@@ -78,6 +78,17 @@ const OrderForm: React.FC = () => {
   const editOrder = location.state?.editOrder;
   const isEditMode = !!editOrder;
 
+  // Admin lead order data (from Admin Leads page)
+  const [adminLeadData, setAdminLeadData] = useState<{
+    prospectId: string;
+    namaProspek: string;
+    noTelefon: string;
+    niche: string;
+    adminIdStaff: string;
+    marketerLeadIdStaff: string;
+  } | null>(null);
+  const isAdminLeadOrder = !!adminLeadData;
+
   const [formData, setFormData] = useState({
     namaPelanggan: '',
     noPhone: '',
@@ -136,6 +147,27 @@ const OrderForm: React.FC = () => {
   // Refresh bundles when component mounts to ensure fresh data
   useEffect(() => {
     refreshBundles();
+  }, []);
+
+  // Check for admin lead order data from sessionStorage
+  useEffect(() => {
+    const adminLeadOrderData = sessionStorage.getItem('adminLeadOrder');
+    if (adminLeadOrderData) {
+      try {
+        const data = JSON.parse(adminLeadOrderData);
+        setAdminLeadData(data);
+        // Pre-fill form with lead data
+        setFormData(prev => ({
+          ...prev,
+          namaPelanggan: data.namaProspek || '',
+          noPhone: data.noTelefon || '',
+        }));
+        // Clear the sessionStorage after reading
+        sessionStorage.removeItem('adminLeadOrder');
+      } catch (e) {
+        console.error('Error parsing admin lead order data:', e);
+      }
+    }
   }, []);
 
   // Clear customer type when phone number changes
@@ -818,43 +850,93 @@ const OrderForm: React.FC = () => {
         // Customer type is already NP/EP/EC from the Check button
         const finalCustomerType = formData.jenisCustomer;
 
-        await addOrder({
-          noTempahan: orderNumber,
-          idSale: idSale,
-          marketerIdStaff: profile?.username || '',
-          marketerName: formData.namaPelanggan,
-          noPhone: formData.noPhone,
-          alamat: formData.alamat,
-          poskod: formData.poskod,
-          bandar: formData.daerah,
-          negeri: formData.negeri,
-          sku: formData.produk,
-          produk: formData.produk,
-          kuantiti: bundleUnits,
-          hargaJualanProduk: formData.hargaJualan,
-          hargaJualanSebenar: formData.hargaJualan,
-          kosPos: 0,
-          kosProduk: 0,
-          profit: formData.hargaJualan,
-          hargaJualanAgen: 0,
-          tarikhTempahan,
-          kurier,
-          noTracking: trackingNumber,
-          statusParcel: 'Pending',
-          deliveryStatus: 'Pending',
-          dateOrder,
-          dateProcessed: '',
-          jenisPlatform: formData.jenisPlatform,
-          jenisCustomer: finalCustomerType, // Save as NP/EP/EC, not "Prospect"
-          caraBayaran: formData.caraBayaran,
-          notaStaff: formData.nota,
-          beratParcel: 0,
-          tarikhBayaran: showPaymentDetails && tarikhBayaran ? format(tarikhBayaran, 'yyyy-MM-dd') : '',
-          jenisBayaran: showPaymentDetails ? formData.jenisBayaran : '',
-          bank: showPaymentDetails ? formData.pilihBank : '',
-          receiptImageUrl: receiptUrl,
-          waybillUrl: waybillUrl,
-        });
+        // For admin lead orders, insert directly to include admin-specific fields
+        if (isAdminLeadOrder && adminLeadData) {
+          const { error: insertError } = await (supabase as any)
+            .from('customer_orders')
+            .insert({
+              no_tempahan: orderNumber,
+              id_sale: idSale,
+              marketer_id: null, // No marketer_id for admin orders
+              marketer_id_staff: profile?.username || '', // Admin's ID as order creator
+              marketer_lead_id_staff: adminLeadData.marketerLeadIdStaff, // Marketer who owns the lead
+              admin_id_staff: adminLeadData.adminIdStaff, // Admin who created the order
+              prospect_id: adminLeadData.prospectId, // Link to the prospect
+              marketer_name: formData.namaPelanggan,
+              no_phone: formData.noPhone,
+              alamat: formData.alamat,
+              poskod: formData.poskod,
+              bandar: formData.daerah,
+              negeri: formData.negeri,
+              sku: formData.produk,
+              produk: formData.produk,
+              kuantiti: bundleUnits,
+              harga_jualan_produk: formData.hargaJualan,
+              harga_jualan_sebenar: formData.hargaJualan,
+              kos_pos: 0,
+              kos_produk: 0,
+              profit: formData.hargaJualan,
+              harga_jualan_agen: 0,
+              tarikh_tempahan: tarikhTempahan,
+              kurier,
+              no_tracking: trackingNumber,
+              status_parcel: 'Pending',
+              delivery_status: 'Pending',
+              date_order: dateOrder,
+              jenis_platform: formData.jenisPlatform,
+              jenis_customer: finalCustomerType,
+              jenis_closing: formData.jenisClosing,
+              cara_bayaran: formData.caraBayaran,
+              nota_staff: formData.nota,
+              berat_parcel: 0,
+              tarikh_bayaran: showPaymentDetails && tarikhBayaran ? format(tarikhBayaran, 'yyyy-MM-dd') : null,
+              jenis_bayaran: showPaymentDetails ? formData.jenisBayaran : null,
+              bank: showPaymentDetails ? formData.pilihBank : null,
+              receipt_image_url: receiptUrl || null,
+              waybill_url: waybillUrl || null,
+            });
+
+          if (insertError) throw insertError;
+        } else {
+          // Regular marketer order
+          await addOrder({
+            noTempahan: orderNumber,
+            idSale: idSale,
+            marketerIdStaff: profile?.username || '',
+            marketerName: formData.namaPelanggan,
+            noPhone: formData.noPhone,
+            alamat: formData.alamat,
+            poskod: formData.poskod,
+            bandar: formData.daerah,
+            negeri: formData.negeri,
+            sku: formData.produk,
+            produk: formData.produk,
+            kuantiti: bundleUnits,
+            hargaJualanProduk: formData.hargaJualan,
+            hargaJualanSebenar: formData.hargaJualan,
+            kosPos: 0,
+            kosProduk: 0,
+            profit: formData.hargaJualan,
+            hargaJualanAgen: 0,
+            tarikhTempahan,
+            kurier,
+            noTracking: trackingNumber,
+            statusParcel: 'Pending',
+            deliveryStatus: 'Pending',
+            dateOrder,
+            dateProcessed: '',
+            jenisPlatform: formData.jenisPlatform,
+            jenisCustomer: finalCustomerType,
+            caraBayaran: formData.caraBayaran,
+            notaStaff: formData.nota,
+            beratParcel: 0,
+            tarikhBayaran: showPaymentDetails && tarikhBayaran ? format(tarikhBayaran, 'yyyy-MM-dd') : '',
+            jenisBayaran: showPaymentDetails ? formData.jenisBayaran : '',
+            bank: showPaymentDetails ? formData.pilihBank : '',
+            receiptImageUrl: receiptUrl,
+            waybillUrl: waybillUrl,
+          });
+        }
 
         // Send WhatsApp notification to customer
         try {
@@ -884,9 +966,28 @@ const OrderForm: React.FC = () => {
 
         // Handle lead update/creation and count_order increment
         try {
-          const marketerIdStaff = profile?.username || '';
+          if (isAdminLeadOrder && adminLeadData?.prospectId) {
+            // Admin lead order - update the prospect directly
+            // First get current count_order
+            const { data: currentProspect } = await (supabase as any)
+              .from('prospects')
+              .select('count_order')
+              .eq('id', adminLeadData.prospectId)
+              .single();
 
-          if (leadInfo?.isNewLead) {
+            const currentCountOrder = currentProspect?.count_order || 0;
+
+            await (supabase as any)
+              .from('prospects')
+              .update({
+                jenis_prospek: finalCustomerType,
+                status_closed: 'closed',
+                price_closed: formData.hargaJualan,
+                count_order: currentCountOrder + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', adminLeadData.prospectId);
+          } else if (leadInfo?.isNewLead) {
             // Create new lead with yesterday's date (for EP cases where lead doesn't exist)
             const newLeadId = await autoCreateLead(formData.noPhone, formData.namaPelanggan, formData.produk);
 
@@ -926,9 +1027,19 @@ const OrderForm: React.FC = () => {
           title: 'Order Berjaya',
           description: 'Tempahan pelanggan telah berjaya disimpan.',
         });
+
+        // Refresh data for admin orders
+        if (isAdminLeadOrder) {
+          await refreshData();
+        }
       }
 
-      navigate('/dashboard/orders');
+      // Navigate back to appropriate page
+      if (isAdminLeadOrder) {
+        navigate('/dashboard/admin/leads');
+      } else {
+        navigate('/dashboard/orders');
+      }
     } catch (error) {
       console.error('Error creating/updating order:', error);
       toast({

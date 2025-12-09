@@ -23,8 +23,10 @@ import { Label } from '@/components/ui/label';
 import {
   Plus, Search, Trash2, Loader2, Users,
   Calendar, RotateCcw, Download, Upload, Pencil,
-  ShoppingCart, UserPlus, Inbox
+  ShoppingCart, UserPlus, Inbox, Check, X
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -37,10 +39,22 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+const STATUS_OPTIONS = [
+  'INVALID',
+  'TIDAK ANGKAT',
+  'BUSY',
+  'TAK MENGAKU',
+  'SUDAH MEMBELI',
+  'TUKAR FIKIRAN',
+  'PRESENT',
+  'DUPLICATE'
+];
+
 const AdminLeads: React.FC = () => {
   const { profile } = useAuth();
   const { prospects, addProspect, updateProspect, deleteProspect, isLoading, refreshData } = useData();
   const { products } = useBundles();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -62,6 +76,16 @@ const AdminLeads: React.FC = () => {
   const [getLeadsCount, setGetLeadsCount] = useState<number>(10);
   const [isGettingLeads, setIsGettingLeads] = useState(false);
   const [unclaimedLeadsCount, setUnclaimedLeadsCount] = useState<number>(0);
+
+  // Status dialog (X icon)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [selectedProspectForStatus, setSelectedProspectForStatus] = useState<any>(null);
+  const [statusFormData, setStatusFormData] = useState({
+    statusProspect: '',
+    masalah: '',
+    pekerjaan: '',
+  });
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const [formData, setFormData] = useState({
     namaProspek: '',
@@ -252,6 +276,89 @@ const AdminLeads: React.FC = () => {
       setSelectedProspectOrders([]);
     } finally {
       setIsLoadingOrders(false);
+    }
+  };
+
+  // Handle Check icon - navigate to order page with lead data
+  const handleGoToOrder = (prospect: any) => {
+    // Store prospect data in sessionStorage for OrderForm to use
+    const orderData = {
+      prospectId: prospect.id,
+      namaProspek: prospect.namaProspek,
+      noTelefon: prospect.noTelefon,
+      niche: prospect.niche,
+      adminIdStaff: profile?.idstaff || '',
+      marketerLeadIdStaff: prospect.marketerIdStaff,
+    };
+    sessionStorage.setItem('adminLeadOrder', JSON.stringify(orderData));
+    navigate('/dashboard/orders/new');
+  };
+
+  // Handle X icon - open status dialog
+  const handleOpenStatusDialog = (prospect: any) => {
+    setSelectedProspectForStatus(prospect);
+    setStatusFormData({
+      statusProspect: '',
+      masalah: '',
+      pekerjaan: '',
+    });
+    setStatusDialogOpen(true);
+  };
+
+  // Handle status update
+  const handleUpdateStatus = async () => {
+    if (!statusFormData.statusProspect) {
+      toast({
+        title: 'Error',
+        description: 'Sila pilih Status Prospect.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedProspectForStatus) return;
+
+    setIsUpdatingStatus(true);
+
+    try {
+      // Build profile text from masalah and pekerjaan
+      const profileParts: string[] = [];
+      if (statusFormData.masalah) {
+        profileParts.push(`Masalah: ${statusFormData.masalah}`);
+      }
+      if (statusFormData.pekerjaan) {
+        profileParts.push(`Pekerjaan: ${statusFormData.pekerjaan}`);
+      }
+      const profileText = profileParts.join(' | ');
+
+      const { error } = await (supabase as any)
+        .from('prospects')
+        .update({
+          status_closed: statusFormData.statusProspect,
+          profile: profileText || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedProspectForStatus.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Berjaya',
+        description: 'Status prospect telah dikemaskini.',
+      });
+
+      setStatusDialogOpen(false);
+      setSelectedProspectForStatus(null);
+      await refreshData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengemaskini status.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -653,11 +760,9 @@ const AdminLeads: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Nama</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Niche</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Jenis</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Orders</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Marketer</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Profile</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Marketer Lead</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Price</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Action</th>
               </tr>
             </thead>
@@ -670,31 +775,8 @@ const AdminLeads: React.FC = () => {
                     <td className="px-4 py-3 text-sm font-medium text-foreground">{prospect.namaProspek}</td>
                     <td className="px-4 py-3 text-sm font-mono text-foreground">{prospect.noTelefon}</td>
                     <td className="px-4 py-3 text-sm text-foreground">{prospect.niche}</td>
-                    <td className="px-4 py-3">
-                      {prospect.jenisProspek ? (
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          prospect.jenisProspek === 'NP'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
-                        }`}>
-                          {prospect.jenisProspek}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center font-medium text-foreground">
-                      {prospect.countOrder > 0 ? (
-                        <button
-                          onClick={() => handleViewOrders(prospect)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
-                        >
-                          <ShoppingCart className="w-3 h-3" />
-                          {prospect.countOrder}
-                        </button>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
+                    <td className="px-4 py-3 text-sm text-foreground max-w-[200px] truncate" title={prospect.profile || ''}>
+                      {prospect.profile || '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-foreground font-medium">{prospect.marketerIdStaff || '-'}</td>
                     <td className="px-4 py-3">
@@ -710,22 +792,21 @@ const AdminLeads: React.FC = () => {
                         <span className="text-muted-foreground">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      {prospect.priceClosed > 0 ? `RM ${prospect.priceClosed.toFixed(2)}` : '-'}
-                    </td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
-                          onClick={() => handleEdit(prospect)}
-                          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          onClick={() => handleGoToOrder(prospect)}
+                          className="p-1.5 rounded-lg hover:bg-green-100 text-muted-foreground hover:text-green-600 transition-colors"
+                          title="Go to Order"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Check className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => { setProspectToDelete(prospect.id); setDeleteDialogOpen(true); }}
+                          onClick={() => handleOpenStatusDialog(prospect)}
                           className="p-1.5 rounded-lg hover:bg-red-100 text-muted-foreground hover:text-red-600 transition-colors"
+                          title="Update Status"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -733,7 +814,7 @@ const AdminLeads: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                     Tiada lead dijumpai.
                   </td>
                 </tr>
@@ -917,6 +998,57 @@ const AdminLeads: React.FC = () => {
           </div>
           <DialogFooter>
             <Button onClick={() => setOrdersModalOpen(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Status Dialog (X icon) */}
+      <Dialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Status Prospect</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Status Prospect *</Label>
+              <Select
+                value={statusFormData.statusProspect}
+                onValueChange={(v) => setStatusFormData(prev => ({ ...prev, statusProspect: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Masalah (Optional)</Label>
+              <Textarea
+                value={statusFormData.masalah}
+                onChange={(e) => setStatusFormData(prev => ({ ...prev, masalah: e.target.value }))}
+                placeholder="Masukkan masalah prospect..."
+                rows={2}
+              />
+            </div>
+            <div>
+              <Label>Pekerjaan (Optional)</Label>
+              <Input
+                value={statusFormData.pekerjaan}
+                onChange={(e) => setStatusFormData(prev => ({ ...prev, pekerjaan: e.target.value }))}
+                placeholder="Masukkan pekerjaan prospect"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusDialogOpen(false)}>Batal</Button>
+            <Button onClick={handleUpdateStatus} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Simpan
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -44,6 +44,11 @@ export interface Prospect {
   jenisProspek: string;
   tarikhPhoneNumber: string;
   adminIdStaff: string;
+  marketerIdStaff: string;
+  statusClosed: string;
+  priceClosed: number;
+  countOrder: number;
+  profile: string;
   createdAt: string;
   createdBy: string;
 }

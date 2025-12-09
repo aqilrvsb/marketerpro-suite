@@ -250,6 +250,34 @@ CREATE TABLE public.ninjavan_tokens (
 );
 
 -- =====================================================
+-- TABLE: webhook_logs (Webhook incoming request logs)
+-- =====================================================
+-- Logs all incoming webhook requests for debugging
+CREATE TABLE public.webhook_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  webhook_type text NOT NULL,                -- 'lead', 'order', 'ninjavan'
+  request_method text,                       -- GET, POST
+  request_body jsonb,                        -- Full request body
+  request_headers jsonb,                     -- Request headers
+  device_id text,                            -- Device ID from webhook
+  sender text,                               -- Sender info from webhook
+  message text,                              -- Raw message content
+  parsed_data jsonb,                         -- Parsed data (lead/order fields)
+  response_status integer,                   -- HTTP response status
+  response_body jsonb,                       -- Response sent back
+  error_message text,                        -- Error message if failed
+  processing_time_ms integer,                -- Time taken to process (ms)
+  ip_address text,                           -- Request IP address
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT webhook_logs_pkey PRIMARY KEY (id)
+);
+
+-- Index for faster webhook log queries
+CREATE INDEX idx_webhook_logs_type ON public.webhook_logs(webhook_type);
+CREATE INDEX idx_webhook_logs_created_at ON public.webhook_logs(created_at DESC);
+CREATE INDEX idx_webhook_logs_device_id ON public.webhook_logs(device_id);
+
+-- =====================================================
 -- TABLE: pnl_config (PNL salary tier configuration)
 -- =====================================================
 -- Configured by BOD for marketer/admin salary calculation

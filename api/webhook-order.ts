@@ -170,7 +170,49 @@ function generateOrderNumber(): string {
   return `${day}${month}${year}-${random}`
 }
 
+// Save webhook log to database
+async function saveWebhookLog(
+  supabase: any,
+  logData: {
+    webhook_type: string
+    request_method: string
+    request_body: any
+    request_headers: any
+    device_id?: string
+    sender?: string
+    message?: string
+    parsed_data?: any
+    response_status: number
+    response_body: any
+    error_message?: string
+    processing_time_ms: number
+    ip_address?: string
+  }
+) {
+  try {
+    await supabase.from('webhook_logs').insert({
+      webhook_type: logData.webhook_type,
+      request_method: logData.request_method,
+      request_body: logData.request_body,
+      request_headers: logData.request_headers,
+      device_id: logData.device_id || null,
+      sender: logData.sender || null,
+      message: logData.message || null,
+      parsed_data: logData.parsed_data || null,
+      response_status: logData.response_status,
+      response_body: logData.response_body,
+      error_message: logData.error_message || null,
+      processing_time_ms: logData.processing_time_ms,
+      ip_address: logData.ip_address || null
+    })
+  } catch (err) {
+    console.error('Failed to save webhook log:', err)
+  }
+}
+
 export default async function handler(req: any, res: any) {
+  const startTime = Date.now()
+
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -180,42 +222,89 @@ export default async function handler(req: any, res: any) {
     return res.status(200).end()
   }
 
+  // Initialize Supabase early for logging
+  let supabase: any = null
+  if (supabaseUrl && supabaseKey) {
+    supabase = createClient(supabaseUrl, supabaseKey)
+  }
+
+  // Get IP address
+  const ipAddress = req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.connection?.remoteAddress || ''
+
+  // Webhook data from Whacenter (can be POST body or GET query)
+  const webhookData = req.method === 'POST' ? req.body : req.query
+
+  // Extract webhook fields
+  const { device_id, message, sender } = webhookData || {}
+
   try {
-    // Webhook data from Whacenter (can be POST body or GET query)
-    const webhookData = req.method === 'POST' ? req.body : req.query
-
-    // Extract webhook fields
-    // Whacenter sends: device_id, sender, message, timestamp, etc.
-    const { device_id, message } = webhookData
-
     if (!message) {
-      return res.status(400).json({
+      const response = {
         success: false,
         error: 'Message is required'
-      })
+      }
+
+      // Log the request
+      if (supabase) {
+        await saveWebhookLog(supabase, {
+          webhook_type: 'order',
+          request_method: req.method,
+          request_body: webhookData,
+          request_headers: req.headers,
+          device_id,
+          sender,
+          message,
+          response_status: 400,
+          response_body: response,
+          error_message: 'Message is required',
+          processing_time_ms: Date.now() - startTime,
+          ip_address: ipAddress
+        })
+      }
+
+      return res.status(400).json(response)
     }
 
     // Parse order data from message
     const orderData = parseOrderMessage(message)
 
     if (!orderData) {
-      return res.status(200).json({
+      const response = {
         success: false,
         message: 'Message is not a valid order format',
         hint: 'Format: #order\nnama: [name]\nphone: [phone]\nalamat: [address]\nposkod: [postcode]\nbandar: [city]\nnegeri: [state]\nproduk: [product]\nkuantiti: [qty]\nharga: [price]\nplatform: [FB/Shopee/Tiktok/Database/Google]\nbayaran: [CASH/COD]'
-      })
+      }
+
+      // Log the request
+      if (supabase) {
+        await saveWebhookLog(supabase, {
+          webhook_type: 'order',
+          request_method: req.method,
+          request_body: webhookData,
+          request_headers: req.headers,
+          device_id,
+          sender,
+          message,
+          response_status: 200,
+          response_body: response,
+          error_message: 'Invalid order format',
+          processing_time_ms: Date.now() - startTime,
+          ip_address: ipAddress
+        })
+      }
+
+      return res.status(200).json(response)
     }
 
     // Initialize Supabase
     if (!supabaseUrl || !supabaseKey) {
       console.error('Supabase credentials not configured')
-      return res.status(500).json({
+      const response = {
         success: false,
         error: 'Database not configured'
-      })
+      }
+      return res.status(500).json(response)
     }
-
-    const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Find marketer by device_id
     let marketerId = null
@@ -247,10 +336,31 @@ export default async function handler(req: any, res: any) {
     }
 
     if (!marketerIdStaff) {
-      return res.status(400).json({
+      const response = {
         success: false,
         error: 'Could not identify marketer from device_id'
-      })
+      }
+
+      // Log the request
+      if (supabase) {
+        await saveWebhookLog(supabase, {
+          webhook_type: 'order',
+          request_method: req.method,
+          request_body: webhookData,
+          request_headers: req.headers,
+          device_id,
+          sender,
+          message,
+          parsed_data: orderData,
+          response_status: 400,
+          response_body: response,
+          error_message: 'Could not identify marketer from device_id',
+          processing_time_ms: Date.now() - startTime,
+          ip_address: ipAddress
+        })
+      }
+
+      return res.status(400).json(response)
     }
 
     // Format phone number
@@ -351,11 +461,32 @@ export default async function handler(req: any, res: any) {
 
     if (insertError) {
       console.error('Error inserting order:', insertError)
-      return res.status(500).json({
+      const response = {
         success: false,
         error: 'Failed to save order',
         details: insertError.message
-      })
+      }
+
+      // Log the request
+      if (supabase) {
+        await saveWebhookLog(supabase, {
+          webhook_type: 'order',
+          request_method: req.method,
+          request_body: webhookData,
+          request_headers: req.headers,
+          device_id,
+          sender,
+          message,
+          parsed_data: orderData,
+          response_status: 500,
+          response_body: response,
+          error_message: insertError.message,
+          processing_time_ms: Date.now() - startTime,
+          ip_address: ipAddress
+        })
+      }
+
+      return res.status(500).json(response)
     }
 
     // Send WhatsApp notification to customer if marketer has device configured
@@ -371,7 +502,7 @@ export default async function handler(req: any, res: any) {
         .limit(1)
 
       if (deviceSettings && deviceSettings.length > 0 && deviceSettings[0].instance) {
-        const message = generateOrderRegisteredMessage({
+        const waMessage = generateOrderRegisteredMessage({
           marketer_name: orderData.nama,
           no_phone: formattedPhone,
           produk: orderData.produk,
@@ -380,11 +511,11 @@ export default async function handler(req: any, res: any) {
           tarikh_tempahan: tarikhTempahan
         })
 
-        whatsappSent = await sendWhatsApp(deviceSettings[0].instance, formattedPhone, message)
+        whatsappSent = await sendWhatsApp(deviceSettings[0].instance, formattedPhone, waMessage)
       }
     }
 
-    return res.status(200).json({
+    const response = {
       success: true,
       message: 'Order saved successfully',
       order: {
@@ -399,14 +530,54 @@ export default async function handler(req: any, res: any) {
         marketer: marketerIdStaff
       },
       whatsapp_sent: whatsappSent
-    })
+    }
+
+    // Log the successful request
+    if (supabase) {
+      await saveWebhookLog(supabase, {
+        webhook_type: 'order',
+        request_method: req.method,
+        request_body: webhookData,
+        request_headers: req.headers,
+        device_id,
+        sender,
+        message,
+        parsed_data: orderData,
+        response_status: 200,
+        response_body: response,
+        processing_time_ms: Date.now() - startTime,
+        ip_address: ipAddress
+      })
+    }
+
+    return res.status(200).json(response)
 
   } catch (error: any) {
     console.error('Order webhook error:', error)
-    return res.status(500).json({
+    const response = {
       success: false,
       error: 'Internal server error',
       details: error.message
-    })
+    }
+
+    // Log the error
+    if (supabase) {
+      await saveWebhookLog(supabase, {
+        webhook_type: 'order',
+        request_method: req.method,
+        request_body: webhookData,
+        request_headers: req.headers,
+        device_id,
+        sender,
+        message,
+        response_status: 500,
+        response_body: response,
+        error_message: error.message,
+        processing_time_ms: Date.now() - startTime,
+        ip_address: ipAddress
+      })
+    }
+
+    return res.status(500).json(response)
   }
 }

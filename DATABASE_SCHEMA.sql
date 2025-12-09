@@ -168,13 +168,14 @@ CREATE TABLE public.prospects (
   nama_prospek text NOT NULL,                -- Prospect name
   no_telefon text NOT NULL,                  -- Phone number
   niche text NOT NULL,                       -- Niche/category (product name)
-  jenis_prospek text NOT NULL,               -- Prospect type: NP, EP
+  jenis_prospek text NOT NULL,               -- Prospect type: NP, EP, EC
   tarikh_phone_number date,                  -- Date of phone number entry
   admin_id_staff text,                       -- Admin Staff ID who created it
   marketer_id_staff text,                    -- Marketer Staff ID who owns this prospect
   created_by uuid,                           -- Reference to profiles.id
   status_closed text,                        -- Closed status
   price_closed numeric,                      -- Closed price
+  count_order integer NOT NULL DEFAULT 0,    -- Count of orders made by this lead
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT prospects_pkey PRIMARY KEY (id)

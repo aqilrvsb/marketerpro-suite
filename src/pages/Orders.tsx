@@ -52,7 +52,7 @@ const Orders: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState<{ id: string; trackingNo: string; platform: string; receiptImageUrl?: string; waybillUrl?: string } | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<{ id: string; trackingNo: string; platform: string; receiptImageUrl?: string; waybillUrl?: string; noPhone?: string; marketerIdStaff?: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Regenerate tracking state
@@ -147,6 +147,8 @@ const Orders: React.FC = () => {
       platform: order.jenisPlatform,
       receiptImageUrl: order.receiptImageUrl,
       waybillUrl: order.waybillUrl,
+      noPhone: order.noPhone,
+      marketerIdStaff: order.marketerIdStaff,
     });
     setDeleteDialogOpen(true);
   };
@@ -308,6 +310,33 @@ const Orders: React.FC = () => {
 
       // Delete the order from database
       await deleteOrder(orderToDelete.id);
+
+      // Decrement count_order for the lead
+      if (orderToDelete.noPhone && orderToDelete.marketerIdStaff) {
+        try {
+          // Find the lead by phone number and marketer
+          const { data: lead } = await (supabase as any)
+            .from('prospects')
+            .select('id, count_order')
+            .eq('marketer_id_staff', orderToDelete.marketerIdStaff)
+            .eq('no_telefon', orderToDelete.noPhone)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (lead && lead.count_order > 0) {
+            await (supabase as any)
+              .from('prospects')
+              .update({
+                count_order: lead.count_order - 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', lead.id);
+          }
+        } catch (err) {
+          console.error('Error decrementing count_order:', err);
+        }
+      }
 
       toast({
         title: 'Order Dipadam',

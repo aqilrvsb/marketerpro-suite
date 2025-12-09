@@ -22,16 +22,12 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import { NEGERI_OPTIONS } from '@/types';
-import { ArrowLeft, Save, Loader2, CalendarIcon, Upload } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, CalendarIcon, Upload, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { put } from '@vercel/blob';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
-const CUSTOMER_TYPE_OPTIONS = [
-  { value: 'Prospect', label: 'Prospect' },
-  { value: 'EC', label: 'Existing Customer' },
-];
 const JENIS_CLOSING_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call'];
 const JENIS_CLOSING_MARKETPLACE_OPTIONS = ['Manual', 'WhatsappBot', 'Website', 'Call', 'Live', 'Shop'];
 const CARA_BAYARAN_OPTIONS = ['CASH', 'COD'];
@@ -72,9 +68,11 @@ const OrderForm: React.FC = () => {
   const [tarikhBayaran, setTarikhBayaran] = useState<Date>();
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string>('');
-  // Determined customer type (NP/EP) based on lead lookup when "Prospect" is selected
-  const [determinedCustomerType, setDeterminedCustomerType] = useState<'NP' | 'EP' | ''>('');
+  // Determined customer type (NP/EP/EC) based on lead lookup
+  const [determinedCustomerType, setDeterminedCustomerType] = useState<'NP' | 'EP' | 'EC' | ''>('');
   const [isCheckingLead, setIsCheckingLead] = useState(false);
+  // Store lead info for count_order increment
+  const [leadInfo, setLeadInfo] = useState<{ id?: string; isNewLead?: boolean; countOrder?: number } | null>(null);
 
   // Edit mode state
   const editOrder = location.state?.editOrder;
@@ -104,12 +102,10 @@ const OrderForm: React.FC = () => {
   // Populate form if editing
   useEffect(() => {
     if (editOrder) {
-      // Convert old NP/EP values to "Prospect" for display, and store the original type
+      // Keep the original customer type (NP/EP/EC)
       const originalType = editOrder.jenisCustomer || '';
-      let displayType = originalType;
-      if (originalType === 'NP' || originalType === 'EP') {
-        displayType = 'Prospect';
-        setDeterminedCustomerType(originalType as 'NP' | 'EP');
+      if (originalType === 'NP' || originalType === 'EP' || originalType === 'EC') {
+        setDeterminedCustomerType(originalType as 'NP' | 'EP' | 'EC');
       }
 
       setFormData({
@@ -117,7 +113,7 @@ const OrderForm: React.FC = () => {
         noPhone: editOrder.noPhone || '',
         jenisPlatform: editOrder.jenisPlatform || '',
         jenisClosing: editOrder.jenisClosing || '',
-        jenisCustomer: displayType,
+        jenisCustomer: originalType, // Keep as NP/EP/EC
         poskod: editOrder.poskod || '',
         daerah: editOrder.bandar || '',
         negeri: editOrder.negeri || '',
@@ -142,47 +138,14 @@ const OrderForm: React.FC = () => {
     refreshBundles();
   }, []);
 
-  // Check lead when phone number changes and customer type is "Prospect"
+  // Clear customer type when phone number changes
   useEffect(() => {
-    const checkLead = async () => {
-      // Only check if customer type is "Prospect" and phone number is valid
-      if (formData.jenisCustomer === 'Prospect' && formData.noPhone && formData.noPhone.startsWith('6') && formData.noPhone.length >= 10) {
-        setIsCheckingLead(true);
-        try {
-          const result = await checkLeadAndDetermineType(formData.noPhone);
-          setDeterminedCustomerType(result.type);
-
-          // Update price based on determined type
-          if (formData.produk) {
-            const newPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, 'Prospect');
-            setFormData(prev => ({ ...prev, hargaJualan: newPrice }));
-          }
-
-          toast({
-            title: result.type === 'NP' ? 'Lead Ditemui (NP)' : 'Lead Ditemui (EP)',
-            description: result.isNewLead
-              ? 'Lead baru akan dicipta secara automatik.'
-              : result.hasExistingType
-                ? `Lead sedia ada - Jenis: ${result.type} (dari rekod)`
-                : `Lead sedia ada - ${result.type === 'NP' ? 'Tarikh sama (New Prospect)' : 'Tarikh berbeza (Existing Prospect)'}`,
-          });
-        } catch (err) {
-          console.error('Error checking lead:', err);
-          // Default to EP if error
-          setDeterminedCustomerType('EP');
-        } finally {
-          setIsCheckingLead(false);
-        }
-      } else if (formData.jenisCustomer === 'EC') {
-        // Clear determined type for EC customers
-        setDeterminedCustomerType('');
-      }
-    };
-
-    // Debounce the check
-    const timeoutId = setTimeout(checkLead, 500);
-    return () => clearTimeout(timeoutId);
-  }, [formData.noPhone, formData.jenisCustomer]);
+    if (!isEditMode) {
+      setDeterminedCustomerType('');
+      setLeadInfo(null);
+      setFormData(prev => ({ ...prev, jenisCustomer: '' }));
+    }
+  }, [formData.noPhone]);
 
   const generateOrderNumber = () => {
     // Generate unique order number using timestamp + random suffix
@@ -203,15 +166,19 @@ const OrderForm: React.FC = () => {
     return data as string;
   };
 
-  // Check lead by phone number and determine NP/EP
-  const checkLeadAndDetermineType = async (phoneNumber: string): Promise<{ type: 'NP' | 'EP'; leadId?: string; isNewLead?: boolean; hasExistingType?: boolean }> => {
+  // Check lead by phone number and determine NP/EP/EC
+  // Logic:
+  // - NP: Lead exists with tarikh_phone_number = today (same date)
+  // - EP: Lead exists with different date OR no lead exists (auto-create with yesterday's date)
+  // - EC: Lead exists and already has jenis_prospek = 'NP' or 'EP' (existing customer who already bought before)
+  const checkLeadAndDetermineType = async (phoneNumber: string): Promise<{ type: 'NP' | 'EP' | 'EC'; leadId?: string; isNewLead?: boolean; countOrder?: number }> => {
     const marketerIdStaff = profile?.username || '';
     const today = new Date().toISOString().split('T')[0];
 
     // Search for existing lead by phone number for this marketer
-    const { data: existingLead } = await supabase
+    const { data: existingLead } = await (supabase as any)
       .from('prospects')
-      .select('id, tarikh_phone_number, jenis_prospek')
+      .select('id, tarikh_phone_number, jenis_prospek, count_order')
       .eq('marketer_id_staff', marketerIdStaff)
       .eq('no_telefon', phoneNumber)
       .order('created_at', { ascending: false })
@@ -219,53 +186,123 @@ const OrderForm: React.FC = () => {
       .maybeSingle();
 
     if (existingLead) {
-      // Lead exists - first check if it already has NP or EP set
+      // Lead exists - check if it already has NP or EP set (meaning they already ordered before)
       const existingType = existingLead.jenis_prospek?.toUpperCase();
+      const currentCountOrder = existingLead.count_order || 0;
+
       if (existingType === 'NP' || existingType === 'EP') {
-        // Keep existing NP/EP value
-        return { type: existingType as 'NP' | 'EP', leadId: existingLead.id, hasExistingType: true };
+        // This customer already bought before, so they become EC (Existing Customer)
+        return { type: 'EC', leadId: existingLead.id, countOrder: currentCountOrder };
       }
 
-      // No existing type - determine based on date logic
+      // No existing type yet - determine based on date logic
       if (existingLead.tarikh_phone_number === today) {
         // Same date = NP (New Prospect)
-        return { type: 'NP', leadId: existingLead.id };
+        return { type: 'NP', leadId: existingLead.id, countOrder: currentCountOrder };
       } else {
         // Different date = EP (Existing Prospect)
-        return { type: 'EP', leadId: existingLead.id };
+        return { type: 'EP', leadId: existingLead.id, countOrder: currentCountOrder };
       }
     } else {
       // Lead doesn't exist - set as EP and will auto-create with yesterday's date
-      return { type: 'EP', isNewLead: true };
+      return { type: 'EP', isNewLead: true, countOrder: 0 };
+    }
+  };
+
+  // Handle Check button click
+  const handleCheckCustomerType = async () => {
+    if (!formData.noPhone || !formData.noPhone.startsWith('6') || formData.noPhone.length < 10) {
+      toast({
+        title: 'Error',
+        description: 'Sila masukkan no. telefon yang sah (bermula dengan 6).',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCheckingLead(true);
+    try {
+      const result = await checkLeadAndDetermineType(formData.noPhone);
+      setDeterminedCustomerType(result.type);
+      setLeadInfo({
+        id: result.leadId,
+        isNewLead: result.isNewLead,
+        countOrder: result.countOrder,
+      });
+
+      // Update form with customer type
+      setFormData(prev => ({ ...prev, jenisCustomer: result.type }));
+
+      // Update price based on determined type
+      if (formData.produk) {
+        const newPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, result.type);
+        setFormData(prev => ({ ...prev, hargaJualan: newPrice }));
+      }
+
+      // Show appropriate message
+      let description = '';
+      if (result.type === 'NP') {
+        description = 'Lead ditemui - Tarikh sama hari ini (New Prospect)';
+      } else if (result.type === 'EP') {
+        description = result.isNewLead
+          ? 'Lead tidak ditemui - akan dicipta automatik (Existing Prospect)'
+          : 'Lead ditemui - Tarikh berbeza (Existing Prospect)';
+      } else if (result.type === 'EC') {
+        description = `Lead telah membeli sebelum ini (Existing Customer) - Order ke-${(result.countOrder || 0) + 1}`;
+      }
+
+      toast({
+        title: `Jenis Customer: ${result.type}`,
+        description,
+      });
+    } catch (err) {
+      console.error('Error checking lead:', err);
+      toast({
+        title: 'Error',
+        description: 'Gagal menyemak lead. Sila cuba lagi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCheckingLead(false);
     }
   };
 
   // Auto-create lead with yesterday's date
-  const autoCreateLead = async (phoneNumber: string, customerName: string, productName: string) => {
+  // productName should be the main product name, not bundle name
+  const autoCreateLead = async (phoneNumber: string, customerName: string, bundleName: string): Promise<string | null> => {
     const marketerIdStaff = profile?.username || '';
+
+    // Get main product name from bundle
+    const selectedBundle = activeBundles.find(b => b.name === bundleName);
+    const mainProductName = selectedBundle?.productName || bundleName;
 
     // Calculate yesterday's date
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayDate = yesterday.toISOString().split('T')[0];
 
-    const { error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('prospects')
       .insert({
         nama_prospek: customerName.toUpperCase(),
         no_telefon: phoneNumber,
-        niche: productName,
+        niche: mainProductName, // Use main product name, not bundle name
         jenis_prospek: 'EP', // Auto-determined as EP since lead didn't exist
         tarikh_phone_number: yesterdayDate,
         marketer_id_staff: marketerIdStaff,
         admin_id_staff: '',
         status_closed: '',
         price_closed: 0,
-      });
+        count_order: 0,
+      })
+      .select('id')
+      .single();
 
     if (error) {
       console.error('Error auto-creating lead:', error);
+      return null;
     }
+    return data?.id || null;
   };
 
   // Get minimum price based on platform, customer type and selected bundle
@@ -273,8 +310,8 @@ const OrderForm: React.FC = () => {
     const bundle = activeBundles.find(b => b.name === bundleName);
     if (!bundle) return 0;
 
-    // If customer type is "Prospect", use the determined type (NP/EP)
-    const effectiveType = customerType === 'Prospect' ? (determinedCustomerType || 'NP') : customerType;
+    // Use the customer type directly (NP/EP/EC)
+    const effectiveType = customerType || determinedCustomerType || 'NP';
 
     // Determine price based on platform and customer type
     if (platform === 'Shopee') {
@@ -297,7 +334,6 @@ const OrderForm: React.FC = () => {
   };
 
   // Get effective customer type for price calculation
-  const effectiveCustomerType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
   const currentMinPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, formData.jenisCustomer);
   const isPriceBelowMinimum = formData.hargaJualan > 0 && formData.hargaJualan < currentMinPrice;
 
@@ -391,11 +427,11 @@ const OrderForm: React.FC = () => {
       return;
     }
 
-    // Validate that Prospect has a determined type
-    if (formData.jenisCustomer === 'Prospect' && !determinedCustomerType && !isEditMode) {
+    // Validate that customer type is NP/EP/EC (must click Check button first)
+    if (!['NP', 'EP', 'EC'].includes(formData.jenisCustomer) && !isEditMode) {
       toast({
         title: 'Error',
-        description: 'Sila tunggu semakan lead selesai sebelum submit.',
+        description: 'Sila klik butang "Semak" untuk menyemak jenis customer.',
         variant: 'destructive',
       });
       return;
@@ -441,10 +477,9 @@ const OrderForm: React.FC = () => {
     // Validate minimum price
     const minPrice = getMinimumPrice(formData.produk, formData.jenisPlatform, formData.jenisCustomer);
     if (formData.hargaJualan < minPrice) {
-      const effectiveType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
       toast({
         title: 'Error',
-        description: `Harga jualan minimum untuk ${effectiveType || formData.jenisCustomer} (${formData.jenisPlatform || 'produk ini'}) adalah RM${minPrice.toFixed(2)}.`,
+        description: `Harga jualan minimum untuk ${formData.jenisCustomer} (${formData.jenisPlatform || 'produk ini'}) adalah RM${minPrice.toFixed(2)}.`,
         variant: 'destructive',
       });
       return;
@@ -780,8 +815,8 @@ const OrderForm: React.FC = () => {
         const selectedBundle = activeBundles.find(b => b.name === formData.produk);
         const bundleUnits = selectedBundle?.units || 1;
 
-        // Determine final customer type to save: use determined type for Prospect, otherwise use EC
-        const finalCustomerType = formData.jenisCustomer === 'Prospect' ? determinedCustomerType : formData.jenisCustomer;
+        // Customer type is already NP/EP/EC from the Check button
+        const finalCustomerType = formData.jenisCustomer;
 
         await addOrder({
           noTempahan: orderNumber,
@@ -847,60 +882,44 @@ const OrderForm: React.FC = () => {
           console.error('Failed to send notification:', notifyErr);
         }
 
-        // Handle lead update/creation for Prospect customer type
-        if (formData.jenisCustomer === 'Prospect') {
-          try {
-            const marketerIdStaff = profile?.username || '';
+        // Handle lead update/creation and count_order increment
+        try {
+          const marketerIdStaff = profile?.username || '';
 
-            // Check if lead exists
-            const { data: matchingLead } = await supabase
-              .from('prospects')
-              .select('id')
-              .eq('marketer_id_staff', marketerIdStaff)
-              .eq('no_telefon', formData.noPhone)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
+          if (leadInfo?.isNewLead) {
+            // Create new lead with yesterday's date (for EP cases where lead doesn't exist)
+            const newLeadId = await autoCreateLead(formData.noPhone, formData.namaPelanggan, formData.produk);
 
-            if (matchingLead) {
-              // Update existing lead with determined type and mark as closed
-              await supabase
+            if (newLeadId) {
+              // Update the newly created lead - set type, mark as closed, and set count_order to 1
+              await (supabase as any)
                 .from('prospects')
                 .update({
-                  jenis_prospek: finalCustomerType, // Set the determined NP/EP type
+                  jenis_prospek: finalCustomerType, // EP
                   status_closed: 'closed',
                   price_closed: formData.hargaJualan,
+                  count_order: 1,
                   updated_at: new Date().toISOString(),
                 })
-                .eq('id', matchingLead.id);
-            } else {
-              // Auto-create lead with last month's date (for EP cases where lead doesn't exist)
-              await autoCreateLead(formData.noPhone, formData.namaPelanggan, formData.produk);
-
-              // Then update the newly created lead as closed
-              const { data: newLead } = await supabase
-                .from('prospects')
-                .select('id')
-                .eq('marketer_id_staff', marketerIdStaff)
-                .eq('no_telefon', formData.noPhone)
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
-
-              if (newLead) {
-                await supabase
-                  .from('prospects')
-                  .update({
-                    status_closed: 'closed',
-                    price_closed: formData.hargaJualan,
-                    updated_at: new Date().toISOString(),
-                  })
-                  .eq('id', newLead.id);
-              }
+                .eq('id', newLeadId);
             }
-          } catch (err) {
-            console.error('Error updating/creating prospect:', err);
+          } else if (leadInfo?.id) {
+            // Existing lead - update type, mark as closed, and increment count_order
+            const currentCountOrder = leadInfo.countOrder || 0;
+
+            await (supabase as any)
+              .from('prospects')
+              .update({
+                jenis_prospek: finalCustomerType, // NP, EP, or EC
+                status_closed: 'closed',
+                price_closed: formData.hargaJualan,
+                count_order: currentCountOrder + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', leadInfo.id);
           }
+        } catch (err) {
+          console.error('Error updating/creating prospect:', err);
         }
 
         toast({
@@ -1017,41 +1036,48 @@ const OrderForm: React.FC = () => {
             {/* Jenis Customer */}
             <div>
               <FormLabel required>Jenis Customer</FormLabel>
-              <Select
-                value={formData.jenisCustomer}
-                onValueChange={(value) => handleChange('jenisCustomer', value)}
-                disabled={isEditMode && profile?.role === 'marketer'}
-              >
-                <SelectTrigger className={cn("bg-background", isEditMode && profile?.role === 'marketer' && "opacity-60 cursor-not-allowed")}>
-                  <SelectValue placeholder="Pilih Jenis Customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CUSTOMER_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {/* Show determined type when Prospect is selected */}
-              {formData.jenisCustomer === 'Prospect' && (
-                <div className="mt-1.5">
-                  {isCheckingLead ? (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Menyemak lead...
-                    </p>
-                  ) : determinedCustomerType ? (
-                    <p className={cn(
-                      "text-xs font-medium",
-                      determinedCustomerType === 'NP' ? "text-green-600" : "text-purple-600"
-                    )}>
-                      Auto: {determinedCustomerType === 'NP' ? 'New Prospect (NP)' : 'Existing Prospect (EP)'}
-                    </p>
-                  ) : formData.noPhone && formData.noPhone.length >= 10 ? null : (
-                    <p className="text-xs text-muted-foreground">
-                      Masukkan no. telefon untuk menyemak lead
-                    </p>
+              <div className="flex gap-2">
+                <Input
+                  value={formData.jenisCustomer ? (
+                    formData.jenisCustomer === 'NP' ? 'New Prospect (NP)' :
+                    formData.jenisCustomer === 'EP' ? 'Existing Prospect (EP)' :
+                    formData.jenisCustomer === 'EC' ? 'Existing Customer (EC)' :
+                    formData.jenisCustomer
+                  ) : ''}
+                  placeholder="Klik Semak untuk menyemak"
+                  readOnly
+                  className={cn(
+                    "bg-muted cursor-not-allowed flex-1",
+                    formData.jenisCustomer === 'NP' && "text-green-600 font-medium",
+                    formData.jenisCustomer === 'EP' && "text-purple-600 font-medium",
+                    formData.jenisCustomer === 'EC' && "text-amber-600 font-medium"
                   )}
-                </div>
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCheckCustomerType}
+                  disabled={isCheckingLead || isEditMode || !formData.noPhone || formData.noPhone.length < 10}
+                  className="shrink-0"
+                >
+                  {isCheckingLead ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-1" />
+                      Semak
+                    </>
+                  )}
+                </Button>
+              </div>
+              {leadInfo && formData.jenisCustomer && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {leadInfo.isNewLead
+                    ? 'Lead baru akan dicipta automatik'
+                    : `Order ke-${(leadInfo.countOrder || 0) + 1} untuk lead ini`
+                  }
+                </p>
               )}
             </div>
 

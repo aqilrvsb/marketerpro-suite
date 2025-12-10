@@ -130,14 +130,10 @@ const ReportingSpend: React.FC = () => {
       }
     });
 
-    // Match prospects to products by niche (SKU) -> find product name from SKU
+    // Match prospects to products by niche (product name)
     productMap.forEach((value, productName) => {
-      // Find the product by name to get its SKU
-      const product = products.find(p => p.name === productName);
-      const productSku = product?.sku || productName;
-
-      // Filter prospects matching this product's SKU (niche field stores SKU)
-      const matchingProspects = filteredProspects.filter(p => p.niche === productSku);
+      // Filter prospects matching this product name (niche field stores product name)
+      const matchingProspects = filteredProspects.filter(p => p.niche === productName);
       
       value.totalLeads = matchingProspects.length;
       value.leadsClose = matchingProspects.filter(p => (p as any).statusClosed === 'closed').length;

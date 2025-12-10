@@ -44,11 +44,13 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 
 const PLATFORM_OPTIONS = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
+const JENIS_CLOSING_OPTIONS = ['Website', 'WhatsappBot', 'Manual', 'Call', 'Live', 'Shop'];
 
 interface Spend {
   id: string;
   product: string;
   jenisPlatform: string;
+  jenisClosing: string;
   totalSpend: number;
   tarikhSpend: string;
   marketerIdStaff: string;
@@ -71,6 +73,7 @@ const Spend: React.FC = () => {
   const [formData, setFormData] = useState({
     product: '',
     jenisPlatform: '',
+    jenisClosing: '',
     totalSpend: '',
     tarikhSpend: '',
   });
@@ -98,6 +101,7 @@ const Spend: React.FC = () => {
         id: d.id,
         product: d.product,
         jenisPlatform: d.jenis_platform,
+        jenisClosing: d.jenis_closing || '',
         totalSpend: parseFloat(d.total_spend) || 0,
         tarikhSpend: d.tarikh_spend,
         marketerIdStaff: d.marketer_id_staff || '',
@@ -153,6 +157,7 @@ const Spend: React.FC = () => {
     setFormData({
       product: '',
       jenisPlatform: '',
+      jenisClosing: '',
       totalSpend: '',
       tarikhSpend: '',
     });
@@ -163,7 +168,7 @@ const Spend: React.FC = () => {
     e.preventDefault();
 
     // Validation
-    if (!formData.product || !formData.jenisPlatform || !formData.totalSpend || !formData.tarikhSpend) {
+    if (!formData.product || !formData.jenisPlatform || !formData.jenisClosing || !formData.totalSpend || !formData.tarikhSpend) {
       toast({
         title: 'Error',
         description: 'Sila lengkapkan semua medan yang diperlukan.',
@@ -179,6 +184,7 @@ const Spend: React.FC = () => {
         const { error } = await (supabase as any).from('spends').update({
           product: formData.product,
           jenis_platform: formData.jenisPlatform,
+          jenis_closing: formData.jenisClosing,
           total_spend: parseFloat(formData.totalSpend),
           tarikh_spend: formData.tarikhSpend,
           updated_at: new Date().toISOString(),
@@ -190,6 +196,7 @@ const Spend: React.FC = () => {
         const { error } = await (supabase as any).from('spends').insert({
           product: formData.product,
           jenis_platform: formData.jenisPlatform,
+          jenis_closing: formData.jenisClosing,
           total_spend: parseFloat(formData.totalSpend),
           tarikh_spend: formData.tarikhSpend,
           marketer_id_staff: profile?.idstaff || '',
@@ -215,6 +222,7 @@ const Spend: React.FC = () => {
     setFormData({
       product: spend.product,
       jenisPlatform: spend.jenisPlatform,
+      jenisClosing: spend.jenisClosing,
       totalSpend: spend.totalSpend.toString(),
       tarikhSpend: spend.tarikhSpend,
     });
@@ -288,6 +296,17 @@ const Spend: React.FC = () => {
                     <SelectTrigger><SelectValue placeholder="Pilih platform" /></SelectTrigger>
                     <SelectContent>
                       {PLATFORM_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="jenisClosing">Jenis Closing *</Label>
+                  <Select value={formData.jenisClosing} onValueChange={(value) => handleChange('jenisClosing', value)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih jenis closing" /></SelectTrigger>
+                    <SelectContent>
+                      {JENIS_CLOSING_OPTIONS.map((opt) => (
                         <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                       ))}
                     </SelectContent>
@@ -418,13 +437,14 @@ const Spend: React.FC = () => {
               <TableHead className="text-right">Total Spend</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Platform</TableHead>
+              <TableHead>Jenis Closing</TableHead>
               <TableHead className="w-24">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredSpends.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Tiada data spend
                 </TableCell>
               </TableRow>
@@ -436,6 +456,7 @@ const Spend: React.FC = () => {
                   <TableCell className="text-right">RM {spend.totalSpend.toFixed(2)}</TableCell>
                   <TableCell>{spend.product}</TableCell>
                   <TableCell>{spend.jenisPlatform}</TableCell>
+                  <TableCell>{spend.jenisClosing || '-'}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <button

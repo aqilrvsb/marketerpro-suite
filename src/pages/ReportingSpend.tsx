@@ -24,6 +24,7 @@ interface Spend {
   id: string;
   product: string;
   jenisPlatform: string;
+  jenisClosing: string;
   totalSpend: number;
   tarikhSpend: string;
   marketerIdStaff: string;
@@ -62,9 +63,6 @@ const ReportingSpend: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Jenis Closing types
-  const jenisClosingTypes = ['Website', 'WhatsappBot', 'Manual', 'Call', 'Live', 'Shop'];
-
   // Check if current user is marketer (should only see their own data)
   const isMarketer = profile?.role === 'marketer';
   const userIdStaff = profile?.idstaff;
@@ -86,6 +84,7 @@ const ReportingSpend: React.FC = () => {
         id: d.id,
         product: d.product,
         jenisPlatform: d.jenis_platform,
+        jenisClosing: d.jenis_closing || '',
         totalSpend: parseFloat(d.total_spend) || 0,
         tarikhSpend: d.tarikh_spend,
         marketerIdStaff: d.marketer_id_staff || '',
@@ -132,7 +131,7 @@ const ReportingSpend: React.FC = () => {
     });
   }, [orders, startDate, endDate]);
 
-  // Aggregate spends by platform with closing breakdown
+  // Aggregate spends by platform with closing breakdown (from spends table)
   const platformStats = useMemo(() => {
     const platforms = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
     const platformIcons: Record<string, { icon: React.ReactNode; color: string; bgColor: string; headerColor: string }> = {
@@ -144,32 +143,32 @@ const ReportingSpend: React.FC = () => {
     };
 
     return platforms.map(platform => {
-      const totalSpend = filteredSpends
-        .filter(s => s.jenisPlatform?.toLowerCase() === platform.toLowerCase())
-        .reduce((sum, s) => sum + s.totalSpend, 0);
+      // Get spends for this platform
+      const platformSpends = filteredSpends.filter(s => s.jenisPlatform?.toLowerCase() === platform.toLowerCase());
+      const totalSpend = platformSpends.reduce((sum, s) => sum + s.totalSpend, 0);
 
-      // Get orders for this platform
+      // Get orders for this platform (for sales total)
       const platformOrders = filteredOrders.filter(o => o.jenisPlatform === platform);
       const totalSales = platformOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
 
-      // Calculate closing breakdown
+      // Calculate closing breakdown from SPENDS (not orders)
       const closingBreakdown = {
-        website: platformOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-        whatsappBot: platformOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-        manual: platformOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-        call: platformOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-        live: platformOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-        shop: platformOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        website: platformSpends.filter(s => s.jenisClosing === 'Website').reduce((sum, s) => sum + s.totalSpend, 0),
+        whatsappBot: platformSpends.filter(s => s.jenisClosing === 'WhatsappBot').reduce((sum, s) => sum + s.totalSpend, 0),
+        manual: platformSpends.filter(s => s.jenisClosing === 'Manual').reduce((sum, s) => sum + s.totalSpend, 0),
+        call: platformSpends.filter(s => s.jenisClosing === 'Call').reduce((sum, s) => sum + s.totalSpend, 0),
+        live: platformSpends.filter(s => s.jenisClosing === 'Live').reduce((sum, s) => sum + s.totalSpend, 0),
+        shop: platformSpends.filter(s => s.jenisClosing === 'Shop').reduce((sum, s) => sum + s.totalSpend, 0),
       };
 
-      // Calculate percentages
+      // Calculate percentages based on spend
       const closingPct = {
-        websitePct: totalSales > 0 ? (closingBreakdown.website / totalSales) * 100 : 0,
-        whatsappBotPct: totalSales > 0 ? (closingBreakdown.whatsappBot / totalSales) * 100 : 0,
-        manualPct: totalSales > 0 ? (closingBreakdown.manual / totalSales) * 100 : 0,
-        callPct: totalSales > 0 ? (closingBreakdown.call / totalSales) * 100 : 0,
-        livePct: totalSales > 0 ? (closingBreakdown.live / totalSales) * 100 : 0,
-        shopPct: totalSales > 0 ? (closingBreakdown.shop / totalSales) * 100 : 0,
+        websitePct: totalSpend > 0 ? (closingBreakdown.website / totalSpend) * 100 : 0,
+        whatsappBotPct: totalSpend > 0 ? (closingBreakdown.whatsappBot / totalSpend) * 100 : 0,
+        manualPct: totalSpend > 0 ? (closingBreakdown.manual / totalSpend) * 100 : 0,
+        callPct: totalSpend > 0 ? (closingBreakdown.call / totalSpend) * 100 : 0,
+        livePct: totalSpend > 0 ? (closingBreakdown.live / totalSpend) * 100 : 0,
+        shopPct: totalSpend > 0 ? (closingBreakdown.shop / totalSpend) * 100 : 0,
       };
 
       return {
@@ -183,107 +182,89 @@ const ReportingSpend: React.FC = () => {
     });
   }, [filteredSpends, filteredOrders]);
 
-  // Calculate overall jenis closing stats
+  // Calculate overall jenis closing stats (from spends table)
   const closingStats = useMemo(() => {
-    const totalSales = filteredOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    const totalSpend = filteredSpends.reduce((sum, s) => sum + s.totalSpend, 0);
     return {
-      website: filteredOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      whatsappBot: filteredOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      manual: filteredOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      call: filteredOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      live: filteredOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      shop: filteredOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
-      totalSales,
+      website: filteredSpends.filter(s => s.jenisClosing === 'Website').reduce((sum, s) => sum + s.totalSpend, 0),
+      whatsappBot: filteredSpends.filter(s => s.jenisClosing === 'WhatsappBot').reduce((sum, s) => sum + s.totalSpend, 0),
+      manual: filteredSpends.filter(s => s.jenisClosing === 'Manual').reduce((sum, s) => sum + s.totalSpend, 0),
+      call: filteredSpends.filter(s => s.jenisClosing === 'Call').reduce((sum, s) => sum + s.totalSpend, 0),
+      live: filteredSpends.filter(s => s.jenisClosing === 'Live').reduce((sum, s) => sum + s.totalSpend, 0),
+      shop: filteredSpends.filter(s => s.jenisClosing === 'Shop').reduce((sum, s) => sum + s.totalSpend, 0),
+      totalSpend,
     };
-  }, [filteredOrders]);
+  }, [filteredSpends]);
 
-  // Aggregate spends by product + platform + jenis closing
+  // Aggregate spends by product + platform + jenis closing (from spends table)
   const aggregatedData = useMemo(() => {
     const dataMap = new Map<string, AggregatedSpend>();
-    const closingTypes = ['Website', 'WhatsappBot', 'Manual', 'Call', 'Live', 'Shop'];
 
-    // Get all unique product + platform combinations from spends
+    // Group spends by product + platform + jenis closing
     filteredSpends.forEach((spend) => {
       const platform = spend.jenisPlatform || 'Unknown';
+      const jenisClosing = spend.jenisClosing || 'Unknown';
+      const key = `${spend.product}|${platform}|${jenisClosing}`;
 
-      // For each closing type, create an entry if there are orders with that closing type
-      closingTypes.forEach((closingType) => {
-        const key = `${spend.product}|${platform}|${closingType}`;
+      // Get orders for this product + platform (for sales calculation)
+      const matchingOrders = filteredOrders.filter(
+        o => o.produk === spend.product && o.jenisPlatform === platform
+      );
+      const totalSales = matchingOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
 
-        // Get orders for this product + platform + closing type
-        const matchingOrders = filteredOrders.filter(
-          o => o.produk === spend.product && o.jenisPlatform === platform && o.jenisClosing === closingType
-        );
-
-        if (matchingOrders.length > 0 || !dataMap.has(key)) {
-          const totalSales = matchingOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
-
-          // Only add if there are sales or if we haven't added this combo yet
-          if (totalSales > 0) {
-            const existing = dataMap.get(key);
-            if (existing) {
-              existing.totalSales += totalSales;
-            } else {
-              dataMap.set(key, {
-                product: spend.product,
-                platform: platform,
-                jenisClosing: closingType,
-                totalSpend: 0, // Will be distributed later
-                totalSales: totalSales,
-                totalLeads: 0,
-                leadsClose: 0,
-                leadsNotClose: 0,
-                totalClosedPrice: 0,
-                kpk: '0.00',
-                roas: '0.00',
-                closingRate: '0.00',
-              });
-            }
-          }
-        }
-      });
-
-      // Also track spend per product+platform (without closing type breakdown for spend)
-      const spendKey = `${spend.product}|${platform}`;
-      // We'll distribute spend proportionally later
+      const existing = dataMap.get(key);
+      if (existing) {
+        existing.totalSpend += spend.totalSpend;
+      } else {
+        dataMap.set(key, {
+          product: spend.product,
+          platform: platform,
+          jenisClosing: jenisClosing,
+          totalSpend: spend.totalSpend,
+          totalSales: 0, // Will be calculated proportionally later
+          totalLeads: 0,
+          leadsClose: 0,
+          leadsNotClose: 0,
+          totalClosedPrice: 0,
+          kpk: '0.00',
+          roas: '0.00',
+          closingRate: '0.00',
+        });
+      }
     });
 
-    // Now distribute spend proportionally across closing types based on sales ratio
-    const productPlatformSpends = new Map<string, number>();
-    filteredSpends.forEach((spend) => {
-      const key = `${spend.product}|${spend.jenisPlatform || 'Unknown'}`;
-      productPlatformSpends.set(key, (productPlatformSpends.get(key) || 0) + spend.totalSpend);
-    });
-
-    // Distribute spend and calculate metrics
+    // Distribute sales proportionally based on spend ratio within product+platform
     dataMap.forEach((value, key) => {
-      const productPlatformKey = `${value.product}|${value.platform}`;
-      const totalPlatformSpend = productPlatformSpends.get(productPlatformKey) || 0;
-
-      // Get total sales for this product+platform across all closing types
-      const totalPlatformSales = Array.from(dataMap.values())
+      // Get total spend for this product+platform across all closing types
+      const totalPlatformSpend = Array.from(dataMap.values())
         .filter(d => d.product === value.product && d.platform === value.platform)
-        .reduce((sum, d) => sum + d.totalSales, 0);
+        .reduce((sum, d) => sum + d.totalSpend, 0);
 
-      // Distribute spend proportionally based on sales ratio
-      const salesRatio = totalPlatformSales > 0 ? value.totalSales / totalPlatformSales : 0;
-      value.totalSpend = totalPlatformSpend * salesRatio;
+      // Get total orders for this product+platform
+      const platformOrders = filteredOrders.filter(
+        o => o.produk === value.product && o.jenisPlatform === value.platform
+      );
+      const totalPlatformSales = platformOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+
+      // Distribute sales proportionally based on spend ratio
+      const spendRatio = totalPlatformSpend > 0 ? value.totalSpend / totalPlatformSpend : 0;
+      value.totalSales = totalPlatformSales * spendRatio;
 
       // Match prospects to products by niche (product name)
       const matchingProspects = filteredProspects.filter(p => p.niche === value.product);
 
-      // Distribute leads proportionally based on sales ratio within product
-      const productTotalSales = Array.from(dataMap.values())
+      // Distribute leads proportionally based on spend ratio within product
+      const productTotalSpend = Array.from(dataMap.values())
         .filter(d => d.product === value.product)
-        .reduce((sum, d) => sum + d.totalSales, 0);
+        .reduce((sum, d) => sum + d.totalSpend, 0);
 
-      const productSalesRatio = productTotalSales > 0 ? value.totalSales / productTotalSales : 0;
-      const distributedLeads = Math.round(matchingProspects.length * productSalesRatio);
-      const distributedLeadsClose = Math.round(matchingProspects.filter(p => (p as any).statusClosed === 'closed').length * productSalesRatio);
+      const productSpendRatio = productTotalSpend > 0 ? value.totalSpend / productTotalSpend : 0;
+      const distributedLeads = Math.round(matchingProspects.length * productSpendRatio);
+      const distributedLeadsClose = Math.round(matchingProspects.filter(p => (p as any).statusClosed === 'closed').length * productSpendRatio);
       const distributedLeadsNotClose = distributedLeads - distributedLeadsClose;
       const distributedClosedPrice = matchingProspects
         .filter(p => (p as any).statusClosed === 'closed')
-        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0) * productSalesRatio;
+        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0) * productSpendRatio;
 
       value.totalLeads = distributedLeads;
       value.leadsClose = distributedLeadsClose;
@@ -297,7 +278,7 @@ const ReportingSpend: React.FC = () => {
     });
 
     return Array.from(dataMap.values())
-      .filter(d => d.totalSales > 0) // Only show rows with sales
+      .filter(d => d.totalSpend > 0) // Only show rows with spend
       .sort((a, b) => {
         // Sort by product first, then platform, then closing type
         if (a.product !== b.product) return a.product.localeCompare(b.product);
@@ -406,7 +387,7 @@ const ReportingSpend: React.FC = () => {
 
       {/* Jenis Closing Summary */}
       <div>
-        <h2 className="text-lg font-semibold text-foreground mb-3">Sales By Jenis Closing</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Spend By Jenis Closing</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 mb-1">
@@ -414,7 +395,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">Website</span>
             </div>
             <p className="text-xl font-bold text-violet-700 dark:text-violet-300">RM {closingStats.website.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.website / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.website / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
           <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
@@ -422,7 +403,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">WA Bot</span>
             </div>
             <p className="text-xl font-bold text-green-700 dark:text-green-300">RM {closingStats.whatsappBot.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.whatsappBot / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.whatsappBot / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
           <div className="bg-slate-50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
@@ -430,7 +411,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">Manual</span>
             </div>
             <p className="text-xl font-bold text-slate-700 dark:text-slate-300">RM {closingStats.manual.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.manual / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.manual / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
           <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 mb-1">
@@ -438,7 +419,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">Call</span>
             </div>
             <p className="text-xl font-bold text-sky-700 dark:text-sky-300">RM {closingStats.call.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.call / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.call / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
           <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 mb-1">
@@ -446,7 +427,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">Live</span>
             </div>
             <p className="text-xl font-bold text-rose-700 dark:text-rose-300">RM {closingStats.live.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.live / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.live / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
           <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
@@ -454,7 +435,7 @@ const ReportingSpend: React.FC = () => {
               <span className="text-xs uppercase font-medium">Shop</span>
             </div>
             <p className="text-xl font-bold text-amber-700 dark:text-amber-300">RM {closingStats.shop.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.shop / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSpend > 0 ? ((closingStats.shop / closingStats.totalSpend) * 100).toFixed(1) : 0}%</p>
           </div>
         </div>
       </div>

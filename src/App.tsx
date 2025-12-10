@@ -16,6 +16,7 @@ import OrderForm from "./pages/OrderForm";
 import Prospects from "./pages/Prospects";
 import Spend from "./pages/Spend";
 import ReportingSpend from "./pages/ReportingSpend";
+import ReportingSpendBOD from "./pages/ReportingSpendBOD";
 import Logistics from "./pages/Logistics";
 import Finance from "./pages/Finance";
 import Reports from "./pages/Reports";
@@ -53,6 +54,7 @@ const App = () => (
                   <Route path="prospects" element={<Prospects />} />
                   <Route path="spend" element={<Spend />} />
                   <Route path="reporting-spend" element={<ReportingSpend />} />
+                  <Route path="reporting-spend-bod" element={<ReportingSpendBOD />} />
                   <Route path="top10" element={<Top10 />} />
                   <Route path="pnl" element={<PNL />} />
                   <Route path="pnl-config" element={<PNLConfig />} />

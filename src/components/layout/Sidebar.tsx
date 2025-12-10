@@ -86,6 +86,12 @@ const navItems: NavItem[] = [
   },
   // ============ BOD ROLE ============
   {
+    label: 'Reporting Spend',
+    path: '/dashboard/reporting-spend-bod',
+    icon: <BarChart3 className="w-5 h-5" />,
+    roles: ['bod'],
+  },
+  {
     label: 'Report Sales',
     path: '/dashboard/report-sales',
     icon: <FileSpreadsheet className="w-5 h-5" />,

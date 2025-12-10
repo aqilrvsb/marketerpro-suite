@@ -277,14 +277,14 @@ const StockOutTab: React.FC = () => {
               <div className="space-y-2">
                 <Label>Master Agent ID Staff (Optional)</Label>
                 <Select
-                  value={formData.masterAgentId}
-                  onValueChange={(value) => setFormData({ ...formData, masterAgentId: value })}
+                  value={formData.masterAgentId || 'none'}
+                  onValueChange={(value) => setFormData({ ...formData, masterAgentId: value === 'none' ? '' : value })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Not Selected (Regular Stock Out)" />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
-                    <SelectItem value="">Not Selected (Regular Stock Out)</SelectItem>
+                    <SelectItem value="none">Not Selected (Regular Stock Out)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

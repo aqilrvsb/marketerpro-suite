@@ -4,9 +4,10 @@ import { useBundles } from '@/context/BundleContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  DollarSign, Users, TrendingUp, Target, 
-  RotateCcw, BarChart3, Percent, Loader2
+import {
+  DollarSign, Users, TrendingUp, Target,
+  RotateCcw, BarChart3, Percent, Loader2,
+  Facebook, Video, ShoppingBag, Database, Globe
 } from 'lucide-react';
 import {
   Table,
@@ -30,6 +31,7 @@ interface Spend {
 
 interface AggregatedSpend {
   product: string;
+  platform: string;
   totalSpend: number;
   totalLeads: number;
   leadsClose: number;
@@ -38,6 +40,14 @@ interface AggregatedSpend {
   kpk: string;
   roas: string;
   closingRate: string;
+}
+
+interface PlatformSpend {
+  platform: string;
+  totalSpend: number;
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
 }
 
 const ReportingSpend: React.FC = () => {
@@ -106,18 +116,43 @@ const ReportingSpend: React.FC = () => {
     });
   }, [prospects, startDate, endDate]);
 
-  // Aggregate spends by product
-  const aggregatedData = useMemo(() => {
-    const productMap = new Map<string, AggregatedSpend>();
+  // Aggregate spends by platform
+  const platformStats = useMemo(() => {
+    const platforms = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
+    const platformIcons: Record<string, { icon: React.ReactNode; color: string; bgColor: string }> = {
+      'Facebook': { icon: <Facebook className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' },
+      'Tiktok': { icon: <Video className="w-4 h-4" />, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800' },
+      'Shopee': { icon: <ShoppingBag className="w-4 h-4" />, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800' },
+      'Database': { icon: <Database className="w-4 h-4" />, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' },
+      'Google': { icon: <Globe className="w-4 h-4" />, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' },
+    };
 
-    // Get all unique products from spends
+    return platforms.map(platform => {
+      const totalSpend = filteredSpends
+        .filter(s => s.jenisPlatform?.toLowerCase() === platform.toLowerCase())
+        .reduce((sum, s) => sum + s.totalSpend, 0);
+      return {
+        platform,
+        totalSpend,
+        ...platformIcons[platform]
+      };
+    });
+  }, [filteredSpends]);
+
+  // Aggregate spends by product + platform
+  const aggregatedData = useMemo(() => {
+    const dataMap = new Map<string, AggregatedSpend>();
+
+    // Get all unique product + platform combinations from spends
     filteredSpends.forEach((spend) => {
-      const existing = productMap.get(spend.product);
+      const key = `${spend.product}|${spend.jenisPlatform || 'Unknown'}`;
+      const existing = dataMap.get(key);
       if (existing) {
         existing.totalSpend += spend.totalSpend;
       } else {
-        productMap.set(spend.product, {
+        dataMap.set(key, {
           product: spend.product,
+          platform: spend.jenisPlatform || 'Unknown',
           totalSpend: spend.totalSpend,
           totalLeads: 0,
           leadsClose: 0,
@@ -131,24 +166,42 @@ const ReportingSpend: React.FC = () => {
     });
 
     // Match prospects to products by niche (product name)
-    productMap.forEach((value, productName) => {
+    // Note: Prospects don't have platform info, so we distribute leads proportionally across platforms for same product
+    dataMap.forEach((value, key) => {
+      const productName = value.product;
       // Filter prospects matching this product name (niche field stores product name)
       const matchingProspects = filteredProspects.filter(p => p.niche === productName);
-      
-      value.totalLeads = matchingProspects.length;
-      value.leadsClose = matchingProspects.filter(p => (p as any).statusClosed === 'closed').length;
-      value.leadsNotClose = matchingProspects.filter(p => !(p as any).statusClosed || (p as any).statusClosed !== 'closed').length;
-      value.totalClosedPrice = matchingProspects
+
+      // Get total spend for this product across all platforms
+      const productTotalSpend = Array.from(dataMap.values())
+        .filter(d => d.product === productName)
+        .reduce((sum, d) => sum + d.totalSpend, 0);
+
+      // Distribute leads proportionally based on spend ratio
+      const spendRatio = productTotalSpend > 0 ? value.totalSpend / productTotalSpend : 0;
+      const distributedLeads = Math.round(matchingProspects.length * spendRatio);
+      const distributedLeadsClose = Math.round(matchingProspects.filter(p => (p as any).statusClosed === 'closed').length * spendRatio);
+      const distributedLeadsNotClose = distributedLeads - distributedLeadsClose;
+      const distributedClosedPrice = matchingProspects
         .filter(p => (p as any).statusClosed === 'closed')
-        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0);
-      
+        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0) * spendRatio;
+
+      value.totalLeads = distributedLeads;
+      value.leadsClose = distributedLeadsClose;
+      value.leadsNotClose = distributedLeadsNotClose;
+      value.totalClosedPrice = distributedClosedPrice;
+
       // Calculate KPK, ROAS, Closing Rate
       value.kpk = value.totalLeads > 0 ? (value.totalSpend / value.totalLeads).toFixed(2) : '0.00';
       value.roas = value.totalSpend > 0 ? (value.totalClosedPrice / value.totalSpend).toFixed(2) : '0.00';
       value.closingRate = value.totalLeads > 0 ? ((value.leadsClose / value.totalLeads) * 100).toFixed(2) : '0.00';
     });
 
-    return Array.from(productMap.values());
+    return Array.from(dataMap.values()).sort((a, b) => {
+      // Sort by product first, then platform
+      if (a.product !== b.product) return a.product.localeCompare(b.product);
+      return a.platform.localeCompare(b.platform);
+    });
   }, [filteredSpends, filteredProspects, products]);
 
   // Calculate overall stats
@@ -249,6 +302,22 @@ const ReportingSpend: React.FC = () => {
         </div>
       </div>
 
+      {/* Spend By Platform */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Spend By Platform</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {platformStats.map((platform) => (
+            <div key={platform.platform} className={`border rounded-lg p-4 ${platform.bgColor}`}>
+              <div className={`flex items-center gap-2 mb-1 ${platform.color}`}>
+                {platform.icon}
+                <span className="text-xs uppercase font-medium">{platform.platform}</span>
+              </div>
+              <p className={`text-xl font-bold ${platform.color}`}>RM {platform.totalSpend.toFixed(2)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="bg-card border border-border rounded-lg p-4">
         <div className="flex flex-wrap gap-4 items-end">
@@ -277,13 +346,14 @@ const ReportingSpend: React.FC = () => {
         </div>
       </div>
 
-      {/* Table - Aggregated by Product */}
+      {/* Table - Aggregated by Product + Platform */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-16">No</TableHead>
               <TableHead>Product</TableHead>
+              <TableHead>Platform</TableHead>
               <TableHead className="text-right">Total Spend</TableHead>
               <TableHead className="text-right">Total Leads</TableHead>
               <TableHead className="text-right">KPK</TableHead>
@@ -296,15 +366,27 @@ const ReportingSpend: React.FC = () => {
           <TableBody>
             {aggregatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   Tiada data spend
                 </TableCell>
               </TableRow>
             ) : (
               aggregatedData.map((data, idx) => (
-                <TableRow key={data.product} className="hover:bg-muted/30">
+                <TableRow key={`${data.product}-${data.platform}`} className="hover:bg-muted/30">
                   <TableCell className="font-medium">{idx + 1}</TableCell>
                   <TableCell className="font-medium">{data.product}</TableCell>
+                  <TableCell>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                      data.platform === 'Facebook' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' :
+                      data.platform === 'Tiktok' ? 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-400' :
+                      data.platform === 'Shopee' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400' :
+                      data.platform === 'Database' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400' :
+                      data.platform === 'Google' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                      'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                    }`}>
+                      {data.platform}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right font-medium">RM {data.totalSpend.toFixed(2)}</TableCell>
                   <TableCell className="text-right">{data.totalLeads}</TableCell>
                   <TableCell className="text-right">RM {data.kpk}</TableCell>

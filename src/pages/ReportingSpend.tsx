@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import {
   DollarSign, Users, TrendingUp, Target,
   RotateCcw, BarChart3, Percent, Loader2,
-  Facebook, Video, ShoppingBag, Database, Globe
+  Facebook, Video, ShoppingBag, Database, Globe,
+  ClipboardList, Phone, Play, Store
 } from 'lucide-react';
 import {
   Table,
@@ -32,7 +33,9 @@ interface Spend {
 interface AggregatedSpend {
   product: string;
   platform: string;
+  jenisClosing: string;
   totalSpend: number;
+  totalSales: number;
   totalLeads: number;
   leadsClose: number;
   leadsNotClose: number;
@@ -51,13 +54,16 @@ interface PlatformSpend {
 }
 
 const ReportingSpend: React.FC = () => {
-  const { prospects } = useData();
+  const { prospects, orders } = useData();
   const { products } = useBundles();
   const { profile } = useAuth();
   const [spends, setSpends] = useState<Spend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Jenis Closing types
+  const jenisClosingTypes = ['Website', 'WhatsappBot', 'Manual', 'Call', 'Live', 'Shop'];
 
   // Check if current user is marketer (should only see their own data)
   const isMarketer = profile?.role === 'marketer';
@@ -116,75 +122,168 @@ const ReportingSpend: React.FC = () => {
     });
   }, [prospects, startDate, endDate]);
 
-  // Aggregate spends by platform
+  // Filter orders based on date range
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const orderDate = order.tarikhTempahan;
+      const matchesStartDate = !startDate || (orderDate && orderDate >= startDate);
+      const matchesEndDate = !endDate || (orderDate && orderDate <= endDate);
+      return matchesStartDate && matchesEndDate;
+    });
+  }, [orders, startDate, endDate]);
+
+  // Aggregate spends by platform with closing breakdown
   const platformStats = useMemo(() => {
     const platforms = ['Facebook', 'Tiktok', 'Shopee', 'Database', 'Google'];
-    const platformIcons: Record<string, { icon: React.ReactNode; color: string; bgColor: string }> = {
-      'Facebook': { icon: <Facebook className="w-4 h-4" />, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800' },
-      'Tiktok': { icon: <Video className="w-4 h-4" />, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800' },
-      'Shopee': { icon: <ShoppingBag className="w-4 h-4" />, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800' },
-      'Database': { icon: <Database className="w-4 h-4" />, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800' },
-      'Google': { icon: <Globe className="w-4 h-4" />, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800' },
+    const platformIcons: Record<string, { icon: React.ReactNode; color: string; bgColor: string; headerColor: string }> = {
+      'Facebook': { icon: <Facebook className="w-5 h-5" />, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800', headerColor: 'bg-blue-100 dark:bg-blue-900/50' },
+      'Tiktok': { icon: <Video className="w-5 h-5" />, color: 'text-pink-600 dark:text-pink-400', bgColor: 'bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800', headerColor: 'bg-pink-100 dark:bg-pink-900/50' },
+      'Shopee': { icon: <ShoppingBag className="w-5 h-5" />, color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800', headerColor: 'bg-orange-100 dark:bg-orange-900/50' },
+      'Database': { icon: <Database className="w-5 h-5" />, color: 'text-purple-600 dark:text-purple-400', bgColor: 'bg-purple-50 dark:bg-purple-950/30 border-purple-200 dark:border-purple-800', headerColor: 'bg-purple-100 dark:bg-purple-900/50' },
+      'Google': { icon: <Globe className="w-5 h-5" />, color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800', headerColor: 'bg-green-100 dark:bg-green-900/50' },
     };
 
     return platforms.map(platform => {
       const totalSpend = filteredSpends
         .filter(s => s.jenisPlatform?.toLowerCase() === platform.toLowerCase())
         .reduce((sum, s) => sum + s.totalSpend, 0);
+
+      // Get orders for this platform
+      const platformOrders = filteredOrders.filter(o => o.jenisPlatform === platform);
+      const totalSales = platformOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+
+      // Calculate closing breakdown
+      const closingBreakdown = {
+        website: platformOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        whatsappBot: platformOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        manual: platformOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        call: platformOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        live: platformOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+        shop: platformOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      };
+
+      // Calculate percentages
+      const closingPct = {
+        websitePct: totalSales > 0 ? (closingBreakdown.website / totalSales) * 100 : 0,
+        whatsappBotPct: totalSales > 0 ? (closingBreakdown.whatsappBot / totalSales) * 100 : 0,
+        manualPct: totalSales > 0 ? (closingBreakdown.manual / totalSales) * 100 : 0,
+        callPct: totalSales > 0 ? (closingBreakdown.call / totalSales) * 100 : 0,
+        livePct: totalSales > 0 ? (closingBreakdown.live / totalSales) * 100 : 0,
+        shopPct: totalSales > 0 ? (closingBreakdown.shop / totalSales) * 100 : 0,
+      };
+
       return {
         platform,
         totalSpend,
+        totalSales,
+        closingBreakdown,
+        closingPct,
         ...platformIcons[platform]
       };
     });
-  }, [filteredSpends]);
+  }, [filteredSpends, filteredOrders]);
 
-  // Aggregate spends by product + platform
+  // Calculate overall jenis closing stats
+  const closingStats = useMemo(() => {
+    const totalSales = filteredOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+    return {
+      website: filteredOrders.filter(o => o.jenisClosing === 'Website').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      whatsappBot: filteredOrders.filter(o => o.jenisClosing === 'WhatsappBot').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      manual: filteredOrders.filter(o => o.jenisClosing === 'Manual').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      call: filteredOrders.filter(o => o.jenisClosing === 'Call').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      live: filteredOrders.filter(o => o.jenisClosing === 'Live').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      shop: filteredOrders.filter(o => o.jenisClosing === 'Shop').reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0),
+      totalSales,
+    };
+  }, [filteredOrders]);
+
+  // Aggregate spends by product + platform + jenis closing
   const aggregatedData = useMemo(() => {
     const dataMap = new Map<string, AggregatedSpend>();
+    const closingTypes = ['Website', 'WhatsappBot', 'Manual', 'Call', 'Live', 'Shop'];
 
     // Get all unique product + platform combinations from spends
     filteredSpends.forEach((spend) => {
-      const key = `${spend.product}|${spend.jenisPlatform || 'Unknown'}`;
-      const existing = dataMap.get(key);
-      if (existing) {
-        existing.totalSpend += spend.totalSpend;
-      } else {
-        dataMap.set(key, {
-          product: spend.product,
-          platform: spend.jenisPlatform || 'Unknown',
-          totalSpend: spend.totalSpend,
-          totalLeads: 0,
-          leadsClose: 0,
-          leadsNotClose: 0,
-          totalClosedPrice: 0,
-          kpk: '0.00',
-          roas: '0.00',
-          closingRate: '0.00',
-        });
-      }
+      const platform = spend.jenisPlatform || 'Unknown';
+
+      // For each closing type, create an entry if there are orders with that closing type
+      closingTypes.forEach((closingType) => {
+        const key = `${spend.product}|${platform}|${closingType}`;
+
+        // Get orders for this product + platform + closing type
+        const matchingOrders = filteredOrders.filter(
+          o => o.produk === spend.product && o.jenisPlatform === platform && o.jenisClosing === closingType
+        );
+
+        if (matchingOrders.length > 0 || !dataMap.has(key)) {
+          const totalSales = matchingOrders.reduce((sum, o) => sum + (o.hargaJualanSebenar || 0), 0);
+
+          // Only add if there are sales or if we haven't added this combo yet
+          if (totalSales > 0) {
+            const existing = dataMap.get(key);
+            if (existing) {
+              existing.totalSales += totalSales;
+            } else {
+              dataMap.set(key, {
+                product: spend.product,
+                platform: platform,
+                jenisClosing: closingType,
+                totalSpend: 0, // Will be distributed later
+                totalSales: totalSales,
+                totalLeads: 0,
+                leadsClose: 0,
+                leadsNotClose: 0,
+                totalClosedPrice: 0,
+                kpk: '0.00',
+                roas: '0.00',
+                closingRate: '0.00',
+              });
+            }
+          }
+        }
+      });
+
+      // Also track spend per product+platform (without closing type breakdown for spend)
+      const spendKey = `${spend.product}|${platform}`;
+      // We'll distribute spend proportionally later
     });
 
-    // Match prospects to products by niche (product name)
-    // Note: Prospects don't have platform info, so we distribute leads proportionally across platforms for same product
+    // Now distribute spend proportionally across closing types based on sales ratio
+    const productPlatformSpends = new Map<string, number>();
+    filteredSpends.forEach((spend) => {
+      const key = `${spend.product}|${spend.jenisPlatform || 'Unknown'}`;
+      productPlatformSpends.set(key, (productPlatformSpends.get(key) || 0) + spend.totalSpend);
+    });
+
+    // Distribute spend and calculate metrics
     dataMap.forEach((value, key) => {
-      const productName = value.product;
-      // Filter prospects matching this product name (niche field stores product name)
-      const matchingProspects = filteredProspects.filter(p => p.niche === productName);
+      const productPlatformKey = `${value.product}|${value.platform}`;
+      const totalPlatformSpend = productPlatformSpends.get(productPlatformKey) || 0;
 
-      // Get total spend for this product across all platforms
-      const productTotalSpend = Array.from(dataMap.values())
-        .filter(d => d.product === productName)
-        .reduce((sum, d) => sum + d.totalSpend, 0);
+      // Get total sales for this product+platform across all closing types
+      const totalPlatformSales = Array.from(dataMap.values())
+        .filter(d => d.product === value.product && d.platform === value.platform)
+        .reduce((sum, d) => sum + d.totalSales, 0);
 
-      // Distribute leads proportionally based on spend ratio
-      const spendRatio = productTotalSpend > 0 ? value.totalSpend / productTotalSpend : 0;
-      const distributedLeads = Math.round(matchingProspects.length * spendRatio);
-      const distributedLeadsClose = Math.round(matchingProspects.filter(p => (p as any).statusClosed === 'closed').length * spendRatio);
+      // Distribute spend proportionally based on sales ratio
+      const salesRatio = totalPlatformSales > 0 ? value.totalSales / totalPlatformSales : 0;
+      value.totalSpend = totalPlatformSpend * salesRatio;
+
+      // Match prospects to products by niche (product name)
+      const matchingProspects = filteredProspects.filter(p => p.niche === value.product);
+
+      // Distribute leads proportionally based on sales ratio within product
+      const productTotalSales = Array.from(dataMap.values())
+        .filter(d => d.product === value.product)
+        .reduce((sum, d) => sum + d.totalSales, 0);
+
+      const productSalesRatio = productTotalSales > 0 ? value.totalSales / productTotalSales : 0;
+      const distributedLeads = Math.round(matchingProspects.length * productSalesRatio);
+      const distributedLeadsClose = Math.round(matchingProspects.filter(p => (p as any).statusClosed === 'closed').length * productSalesRatio);
       const distributedLeadsNotClose = distributedLeads - distributedLeadsClose;
       const distributedClosedPrice = matchingProspects
         .filter(p => (p as any).statusClosed === 'closed')
-        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0) * spendRatio;
+        .reduce((sum, p) => sum + (parseFloat((p as any).priceClosed) || 0), 0) * productSalesRatio;
 
       value.totalLeads = distributedLeads;
       value.leadsClose = distributedLeadsClose;
@@ -193,16 +292,19 @@ const ReportingSpend: React.FC = () => {
 
       // Calculate KPK, ROAS, Closing Rate
       value.kpk = value.totalLeads > 0 ? (value.totalSpend / value.totalLeads).toFixed(2) : '0.00';
-      value.roas = value.totalSpend > 0 ? (value.totalClosedPrice / value.totalSpend).toFixed(2) : '0.00';
+      value.roas = value.totalSpend > 0 ? (value.totalSales / value.totalSpend).toFixed(2) : '0.00';
       value.closingRate = value.totalLeads > 0 ? ((value.leadsClose / value.totalLeads) * 100).toFixed(2) : '0.00';
     });
 
-    return Array.from(dataMap.values()).sort((a, b) => {
-      // Sort by product first, then platform
-      if (a.product !== b.product) return a.product.localeCompare(b.product);
-      return a.platform.localeCompare(b.platform);
-    });
-  }, [filteredSpends, filteredProspects, products]);
+    return Array.from(dataMap.values())
+      .filter(d => d.totalSales > 0) // Only show rows with sales
+      .sort((a, b) => {
+        // Sort by product first, then platform, then closing type
+        if (a.product !== b.product) return a.product.localeCompare(b.product);
+        if (a.platform !== b.platform) return a.platform.localeCompare(b.platform);
+        return a.jenisClosing.localeCompare(b.jenisClosing);
+      });
+  }, [filteredSpends, filteredOrders, filteredProspects, products]);
 
   // Calculate overall stats
   const stats = useMemo(() => {
@@ -302,17 +404,112 @@ const ReportingSpend: React.FC = () => {
         </div>
       </div>
 
-      {/* Spend By Platform */}
+      {/* Jenis Closing Summary */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground mb-3">Sales By Jenis Closing</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-violet-600 dark:text-violet-400 mb-1">
+              <Globe className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">Website</span>
+            </div>
+            <p className="text-xl font-bold text-violet-700 dark:text-violet-300">RM {closingStats.website.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.website / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1">
+              <Phone className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">WA Bot</span>
+            </div>
+            <p className="text-xl font-bold text-green-700 dark:text-green-300">RM {closingStats.whatsappBot.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.whatsappBot / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-slate-950/30 border border-slate-200 dark:border-slate-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 mb-1">
+              <ClipboardList className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">Manual</span>
+            </div>
+            <p className="text-xl font-bold text-slate-700 dark:text-slate-300">RM {closingStats.manual.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.manual / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+          <div className="bg-sky-50 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-sky-600 dark:text-sky-400 mb-1">
+              <Phone className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">Call</span>
+            </div>
+            <p className="text-xl font-bold text-sky-700 dark:text-sky-300">RM {closingStats.call.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.call / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 mb-1">
+              <Play className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">Live</span>
+            </div>
+            <p className="text-xl font-bold text-rose-700 dark:text-rose-300">RM {closingStats.live.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.live / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1">
+              <Store className="w-4 h-4" />
+              <span className="text-xs uppercase font-medium">Shop</span>
+            </div>
+            <p className="text-xl font-bold text-amber-700 dark:text-amber-300">RM {closingStats.shop.toFixed(2)}</p>
+            <p className="text-xs text-muted-foreground">{closingStats.totalSales > 0 ? ((closingStats.shop / closingStats.totalSales) * 100).toFixed(1) : 0}%</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Spend By Platform - Dashboard Style */}
       <div>
         <h2 className="text-lg font-semibold text-foreground mb-3">Spend By Platform</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {platformStats.map((platform) => (
-            <div key={platform.platform} className={`border rounded-lg p-4 ${platform.bgColor}`}>
-              <div className={`flex items-center gap-2 mb-1 ${platform.color}`}>
-                {platform.icon}
-                <span className="text-xs uppercase font-medium">{platform.platform}</span>
+            <div key={platform.platform} className={`border rounded-lg overflow-hidden ${platform.bgColor}`}>
+              {/* Header */}
+              <div className={`p-4 ${platform.headerColor}`}>
+                <div className={`flex items-center gap-2 mb-2 ${platform.color}`}>
+                  {platform.icon}
+                  <span className="text-sm font-semibold uppercase">{platform.platform}</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Spend:</span>
+                    <span className={`text-sm font-bold ${platform.color}`}>RM {platform.totalSpend.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Sales:</span>
+                    <span className="text-sm font-bold text-foreground">RM {platform.totalSales.toFixed(2)}</span>
+                  </div>
+                </div>
               </div>
-              <p className={`text-xl font-bold ${platform.color}`}>RM {platform.totalSpend.toFixed(2)}</p>
+              {/* Closing Breakdown */}
+              <div className="p-3 space-y-2 bg-white/50 dark:bg-black/20">
+                <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Jenis Closing</p>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-violet-600 dark:text-violet-400">Website</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.website.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.websitePct.toFixed(0)}%)</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-green-600 dark:text-green-400">WA Bot</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.whatsappBot.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.whatsappBotPct.toFixed(0)}%)</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">Manual</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.manual.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.manualPct.toFixed(0)}%)</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-sky-600 dark:text-sky-400">Call</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.call.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.callPct.toFixed(0)}%)</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-rose-600 dark:text-rose-400">Live</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.live.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.livePct.toFixed(0)}%)</span></span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-amber-600 dark:text-amber-400">Shop</span>
+                  <span className="text-xs font-medium">RM {platform.closingBreakdown.shop.toFixed(0)} <span className="text-muted-foreground">({platform.closingPct.shopPct.toFixed(0)}%)</span></span>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -346,15 +543,17 @@ const ReportingSpend: React.FC = () => {
         </div>
       </div>
 
-      {/* Table - Aggregated by Product + Platform */}
+      {/* Table - Aggregated by Product + Platform + Jenis Closing */}
       <div className="bg-card border border-border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-16">No</TableHead>
+              <TableHead className="w-12">No</TableHead>
               <TableHead>Product</TableHead>
               <TableHead>Platform</TableHead>
+              <TableHead>Jenis Closing</TableHead>
               <TableHead className="text-right">Total Spend</TableHead>
+              <TableHead className="text-right">Total Sales</TableHead>
               <TableHead className="text-right">Total Leads</TableHead>
               <TableHead className="text-right">KPK</TableHead>
               <TableHead className="text-right">Leads Close</TableHead>
@@ -366,13 +565,13 @@ const ReportingSpend: React.FC = () => {
           <TableBody>
             {aggregatedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   Tiada data spend
                 </TableCell>
               </TableRow>
             ) : (
               aggregatedData.map((data, idx) => (
-                <TableRow key={`${data.product}-${data.platform}`} className="hover:bg-muted/30">
+                <TableRow key={`${data.product}-${data.platform}-${data.jenisClosing}`} className="hover:bg-muted/30">
                   <TableCell className="font-medium">{idx + 1}</TableCell>
                   <TableCell className="font-medium">{data.product}</TableCell>
                   <TableCell>
@@ -387,7 +586,21 @@ const ReportingSpend: React.FC = () => {
                       {data.platform}
                     </span>
                   </TableCell>
+                  <TableCell>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                      data.jenisClosing === 'Website' ? 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400' :
+                      data.jenisClosing === 'WhatsappBot' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                      data.jenisClosing === 'Manual' ? 'bg-slate-100 text-slate-800 dark:bg-slate-900/30 dark:text-slate-400' :
+                      data.jenisClosing === 'Call' ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400' :
+                      data.jenisClosing === 'Live' ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400' :
+                      data.jenisClosing === 'Shop' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400' :
+                      'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+                    }`}>
+                      {data.jenisClosing === 'WhatsappBot' ? 'WA Bot' : data.jenisClosing}
+                    </span>
+                  </TableCell>
                   <TableCell className="text-right font-medium">RM {data.totalSpend.toFixed(2)}</TableCell>
+                  <TableCell className="text-right font-medium text-green-600">RM {data.totalSales.toFixed(2)}</TableCell>
                   <TableCell className="text-right">{data.totalLeads}</TableCell>
                   <TableCell className="text-right">RM {data.kpk}</TableCell>
                   <TableCell className="text-right text-green-600">{data.leadsClose}</TableCell>
